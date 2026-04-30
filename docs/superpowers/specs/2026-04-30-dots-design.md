@@ -25,7 +25,6 @@ dots/
 │   ├── run_onchange_install-packages.sh.tmpl   # installs packages; re-runs only when packages.yaml changes
 │   ├── dot_gitconfig.tmpl                      # ~/.gitconfig — Bitwarden (bitwardenFields) + machine vars
 │   ├── dot_zshrc.tmpl                          # ~/.zshrc
-│   ├── dot_tmux.conf                           # ~/.tmux.conf (no templating needed)
 │   ├── private_dot_config/                     # ~/.config/ — private_ = chmod 600
 │   │   ├── exact_nvim/                         # exact_ on nvim: deletes unmanaged files under ~/.config/nvim/
 │   │   └── exact_tmux/                         # exact_ on tmux: deletes unmanaged files under ~/.config/tmux/
@@ -153,13 +152,13 @@ Idempotent — safe to re-run on an existing machine. Supports headless executio
 
 ### Headless mode
 
-Environment variables override all interactive prompts:
+Environment variables override the machine config prompts (step 5):
 
 ```bash
 MACHINE_ROLE=server GIT_NAME="Lukasz Sztukiewicz" GIT_EMAIL="ops@example.com" ./install.sh
 ```
 
-Useful for provisioning via SSH, Ansible, or cloud-init.
+Useful for provisioning via SSH, Ansible, or cloud-init. **Bitwarden auth (step 4) remains interactive** — master password is never passed as an env var.
 
 ### Flow
 
@@ -192,7 +191,7 @@ Even with Bitwarden, hardcoded tokens can accidentally end up in `.tmpl` files. 
 ```yaml
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.x.x
+    rev: v8.18.4   # pin to latest stable; update with `pre-commit autoupdate`
     hooks:
       - id: gitleaks
 ```
