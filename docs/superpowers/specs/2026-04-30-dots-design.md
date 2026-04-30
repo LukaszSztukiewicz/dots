@@ -117,11 +117,9 @@ Chezmoi reads `BW_SESSION` from the environment. `install.sh` handles the sessio
 
 ## Package Management
 
-`home/run_onchange_install-packages.sh.tmpl` is a Chezmoi run script that:
+`home/run_onchange_install-packages.sh.tmpl` is a Chezmoi run script that renders into a plain bash script at apply time — no YAML parsing in the shell.
 
-1. Detects the distro's package manager (currently focused on Ubuntu/apt; structure allows adding pacman/dnf later).
-2. Reads `packages.yaml` for the package list, which maps packages to distro-specific names.
-3. Branches on `machineRole` to skip workstation-only packages on servers.
+**How it works:** Chezmoi reads `packages.yaml` during template rendering via `{{ include "../packages.yaml" | fromYaml }}`, iterates the package list, and emits a flat list of distro-specific package names directly into the rendered `.sh` file. The shell only sees a static `apt-get install` call with pre-resolved package names.
 
 **`packages.yaml` structure (Ubuntu-focused):**
 
@@ -142,7 +140,36 @@ workstation_only:
     ubuntu: bat
 ```
 
-Chezmoi hashes the script content and only re-executes when the hash changes. The script embeds `{{ include "../packages.yaml" }}` so that any change to `packages.yaml` at the repo root triggers a re-install on next `chezmoi apply`.
+**Template rendering example** (what the `.tmpl` produces):
+
+```
+# run_onchange_install-packages.sh.tmpl
+{{- $pkgs := include "../packages.yaml" | fromYaml -}}
+{{- $all := $pkgs.packages -}}
+{{- if ne .machineRole "server" -}}{{- $all = concat $all $pkgs.workstation_only -}}{{- end -}}
+#!/usr/bin/env bash
+set -euo pipefail
+apt-get install -y \
+{{- range $all }}
+  {{ .ubuntu }} \
+{{- end }}
+```
+
+Rendered output (pure bash, no YAML knowledge required at runtime):
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+apt-get install -y \
+  ripgrep \
+  fzf \
+  neovim \
+  tmux \
+  zsh \
+  bat \
+```
+
+Chezmoi hashes the rendered script content and only re-executes when the hash changes. Because `packages.yaml` is included via `{{ include }}`, any change to it at the repo root changes the rendered script hash and triggers a re-install on next `chezmoi apply`.
 
 ---
 
