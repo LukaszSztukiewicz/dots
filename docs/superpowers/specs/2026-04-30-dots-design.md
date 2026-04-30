@@ -18,11 +18,11 @@ A personal dotfiles repository managed by Chezmoi. It covers a broad set of tool
 dots/
 ├── README.md
 ├── install.sh                                  # bootstrap: installs chezmoi, bw, writes local config, runs apply
+├── packages.txt                                # canonical package list (at repo root; referenced by run_onchange_ via include)
 ├── home/                                       # chezmoi source directory
 │   ├── .chezmoi.toml.tmpl                      # generates per-machine ~/.config/chezmoi/chezmoi.toml
 │   ├── .chezmoiignore                          # excludes README.md, scripts/, docs/ from $HOME apply
-│   ├── run_onchange_install-packages.sh.tmpl   # installs packages; re-runs only when packages.txt changes
-│   ├── packages.txt                            # canonical package list (hashed by run_onchange_)
+│   ├── run_onchange_install-packages.sh.tmpl   # installs packages; re-runs only when packages.txt changes (hashed via {{ include "../packages.txt" }})
 │   ├── dot_gitconfig.tmpl                      # ~/.gitconfig — Bitwarden + machine vars
 │   ├── dot_zshrc.tmpl                          # ~/.zshrc
 │   ├── dot_tmux.conf                           # ~/.tmux.conf (no templating)
@@ -108,7 +108,7 @@ Secrets are never committed to the repo. They are pulled from Bitwarden at `chez
 2. Reads `packages.txt` for the list of packages to install.
 3. Branches on `machineRole` to optionally install workstation-only packages.
 
-Chezmoi hashes the script content (which includes `packages.txt` via template inclusion) and only re-executes when the hash changes — so adding or removing a package from `packages.txt` automatically triggers a re-install on next `chezmoi apply`.
+Chezmoi hashes the script content and only re-executes when the hash changes. The script embeds `{{ include "../packages.txt" }}` so that adding or removing a package from `packages.txt` at the repo root automatically changes the hash and triggers a re-install on next `chezmoi apply`.
 
 ---
 
