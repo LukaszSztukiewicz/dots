@@ -33,6 +33,7 @@ dots/
 ├── docs/
 │   └── superpowers/specs/
 └── scripts/                                    # helper scripts; not applied to $HOME
+    ├── apply.sh                                # wrapper: ensures valid BW_SESSION, then runs chezmoi apply
     ├── test.sh                                 # Docker-based smoke test
     └── unmanaged.sh                            # runs chezmoi unmanaged to surface files not yet tracked
 ```
@@ -234,9 +235,29 @@ Setup: `pip install pre-commit && pre-commit install`. CI also runs `gitleaks de
 ```bash
 chezmoi edit ~/.zshrc    # open managed file in editor
 chezmoi diff             # preview what apply would change
-chezmoi apply            # apply changes to $HOME
+scripts/apply.sh         # BW-aware apply (see below)
 chezmoi cd && git add -A && git commit -m "..." && git push
 ```
+
+**`scripts/apply.sh` — BW-aware apply wrapper:**
+
+Runs before every `chezmoi apply` to ensure a valid Bitwarden session exists, mirroring the auth logic in `install.sh` without the full bootstrap overhead:
+
+```
+1. Check BW_SESSION: run `bw status`
+2. If "unlocked" and BW_SESSION is set: proceed directly to chezmoi apply
+3. If "locked": run `bw unlock`, export BW_SESSION, then chezmoi apply
+4. If "unauthenticated": run `bw login`, then bw unlock, export BW_SESSION, then chezmoi apply
+```
+
+A shell function (sourced from `~/.zshrc`) wraps this for convenience:
+
+```bash
+# rendered into dot_zshrc.tmpl
+cap() { ~/dots/scripts/apply.sh "$@"; }
+```
+
+So the daily command is just `cap` (chezmoi apply). The function is rendered into `~/.zshrc` via the template so it's available on every machine automatically.
 
 ### State pruning (`scripts/unmanaged.sh`)
 
