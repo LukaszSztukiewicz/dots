@@ -1,5 +1,7 @@
 {{- $gitSecrets := bitwardenFields "item" "dots-git-secrets" -}}
-{{ template "git_identity" . }}
+[user]
+    name  = {{ .gitName }}
+    email = {{ .gitEmail }}
 
 [core]
     editor = nvim
