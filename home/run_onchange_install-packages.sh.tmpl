@@ -1,0 +1,13 @@
+{{- $pkgs := include "../packages.yaml" | fromYaml -}}
+{{- $all := $pkgs.packages -}}
+{{- if ne .machineRole "server" -}}
+{{-   $all = concat $all $pkgs.workstation_only -}}
+{{- end -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[dots] Installing packages..."
+sudo apt-get update -qq
+sudo apt-get install -y{{ range $all }} {{ .ubuntu }}{{ end }}
+
+echo "[dots] Package installation complete."
