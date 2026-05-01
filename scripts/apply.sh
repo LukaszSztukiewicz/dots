@@ -15,7 +15,9 @@ _bw_ensure_session() {
             ;;
         unauthenticated)
             echo "[dots] Not logged in to Bitwarden. Logging in..."
-            BW_SESSION=$(bw login --raw)
+            bw login
+            echo "[dots] Login complete. Unlocking vault..."
+            BW_SESSION=$(bw unlock --raw)
             export BW_SESSION
             ;;
         *)

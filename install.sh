@@ -47,7 +47,9 @@ _bw_ensure_session() {
             ;;
         unauthenticated)
             info "Not logged in to Bitwarden. Logging in..."
-            BW_SESSION=$(bw login --raw)
+            bw login
+            info "Login complete. Unlocking vault..."
+            BW_SESSION=$(bw unlock --raw)
             export BW_SESSION
             ;;
         *)
@@ -87,7 +89,20 @@ if [ ! -f "$CHEZMOI_CFG" ]; then
         read -rp "HTTP proxy (leave blank if none): " proxy
     fi
 
+    validate_no_quotes() {
+        local val="$1" label="$2"
+        if [[ "$val" == *'"'* ]] || [[ "$val" == *$'\\'* ]]; then
+            error "$label must not contain double-quotes or backslashes"
+        fi
+    }
+    validate_no_quotes "$machine_role" "Machine role"
+    validate_no_quotes "$git_name" "Git name"
+    validate_no_quotes "$git_email" "Git email"
+    validate_no_quotes "$proxy" "Proxy"
+
     cat > "$CHEZMOI_CFG" << EOF
+sourceDir = "$HOME/.local/share/chezmoi/home"
+
 [data]
   machineRole = "$machine_role"
   gitName     = "$git_name"

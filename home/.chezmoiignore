@@ -6,3 +6,4 @@
 ../.github
 ../.pre-commit-config.yaml
 ../.gitignore
+../.chezmoi.toml.tmpl

@@ -2,6 +2,7 @@
 {{- $gitName := promptStringOnce . "gitName" "Git full name" -}}
 {{- $gitEmail := promptStringOnce . "gitEmail" "Git email" -}}
 {{- $proxy := promptStringOnce . "proxy" "HTTP proxy (leave blank if none)" -}}
+sourceDir = {{ joinPath .chezmoi.sourceDir "home" | quote }}
 
 [data]
   machineRole = {{ $machineRole | quote }}
