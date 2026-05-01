@@ -1,0 +1,23 @@
+packages:
+  - name: zsh
+    ubuntu: zsh
+  - name: git
+    ubuntu: git
+  - name: curl
+    ubuntu: curl
+  - name: tmux
+    ubuntu: tmux
+  - name: neovim
+    ubuntu: neovim
+  - name: ripgrep
+    ubuntu: ripgrep
+  - name: fzf
+    ubuntu: fzf
+  - name: python3
+    ubuntu: python3
+
+workstation_only:
+  - name: bat
+    ubuntu: bat
+  - name: jq
+    ubuntu: jq
