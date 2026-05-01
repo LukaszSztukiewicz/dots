@@ -1,0 +1,19 @@
+{{- $gitSecrets := bitwardenFields "item" "dots-git-secrets" -}}
+{{ template "git_identity" . }}
+
+[core]
+    editor = nvim
+
+[init]
+    defaultBranch = main
+
+[pull]
+    rebase = true
+
+[credential]
+    helper = {{ (index $gitSecrets "credential_helper").value }}
+
+{{ if .proxy -}}
+[http]
+    proxy = {{ .proxy }}
+{{ end -}}
