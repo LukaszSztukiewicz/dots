@@ -1,0 +1,8 @@
+# repo-level files that must not be written to $HOME
+../README.md
+../packages.yaml
+../scripts
+../docs
+../.github
+../.pre-commit-config.yaml
+../.gitignore
