@@ -11,7 +11,7 @@ Personal dotfiles managed with [Chezmoi](https://chezmoi.io) + Bitwarden.
 ## First-time setup on a new machine
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lsztuk/dots/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | bash
 ```
 
 Or clone and run locally:
