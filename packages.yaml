@@ -16,8 +16,8 @@ packages:
   # neovim: install via scripts/install-nvim.sh (apt nvim is too old for LazyVim).
   - name: ripgrep
     ubuntu: ripgrep
-  - name: fzf
-    ubuntu: fzf
+  # fzf: install via scripts/install-fzf.sh (upstream installer; apt's
+  # packaging on minimal images is missing examples/key-bindings.zsh).
   - name: fd-find
     ubuntu: fd-find
   - name: python3

@@ -36,6 +36,22 @@ case "$arch" in
         ;;
 esac
 
+# sudo only when not root; minimal root containers may lack sudo entirely.
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+    if ! command -v sudo >/dev/null 2>&1; then
+        echo "[dots] ERROR: install-nvim.sh needs root for /opt and /usr/local/bin, but sudo is unavailable." >&2
+        exit 1
+    fi
+    SUDO=sudo
+fi
+
+# Warn if an existing nvim shadows what we're about to install (e.g. snap, apt).
+existing=$(command -v nvim 2>/dev/null || true)
+if [ -n "$existing" ] && [ "$existing" != "/usr/local/bin/nvim" ]; then
+    echo "[dots] note: an existing nvim is at $existing — /usr/local/bin/nvim will take precedence after install."
+fi
+
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -43,11 +59,11 @@ url="https://github.com/neovim/neovim/releases/download/${TAG}/${asset}"
 echo "[dots] Downloading nvim ${TAG} ($asset)"
 curl -fsSL "$url" -o "$TMP/$asset"
 
-sudo rm -rf "$prefix"
-sudo mkdir -p "$prefix"
-sudo tar -xzf "$TMP/$asset" -C "$prefix" --strip-components=1
+$SUDO rm -rf "$prefix"
+$SUDO mkdir -p "$prefix"
+$SUDO tar -xzf "$TMP/$asset" -C "$prefix" --strip-components=1
 
-sudo ln -sf "$prefix/bin/nvim" /usr/local/bin/nvim
+$SUDO ln -sf "$prefix/bin/nvim" /usr/local/bin/nvim
 
 echo "[dots] nvim installed: $(/usr/local/bin/nvim --version | head -1)"
 echo "[dots] On first launch, LazyVim will bootstrap lazy.nvim and install plugins."

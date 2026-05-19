@@ -32,6 +32,31 @@ if ! command_exists apt-get; then
     error "Only Ubuntu/apt-based systems are supported. Detected: $(uname -a)"
 fi
 
+# 1a. apt-get wrapper that picks sudo only when needed. Some minimal root
+# containers don't ship sudo, and running it from root is pointless overhead.
+_apt() {
+    if [ "$(id -u)" -eq 0 ]; then
+        apt-get "$@"
+    elif command_exists sudo; then
+        sudo apt-get "$@"
+    else
+        error "apt-get $1 needs root and sudo is unavailable."
+    fi
+}
+
+# 1b. Bootstrap dependencies install.sh itself needs, before we touch chezmoi/bw.
+# (chezmoi apply later installs the bulk via packages.yaml; this is just what we
+# call between here and there.)
+_need_bootstrap=()
+command_exists unzip || _need_bootstrap+=(unzip)
+command_exists curl  || _need_bootstrap+=(curl)
+if [ "${#_need_bootstrap[@]}" -gt 0 ]; then
+    info "Installing bootstrap deps: ${_need_bootstrap[*]}"
+    export DEBIAN_FRONTEND=noninteractive
+    _apt update -qq
+    _apt install -y "${_need_bootstrap[@]}"
+fi
+
 # 2. Install chezmoi
 if ! command_exists chezmoi; then
     info "Installing chezmoi..."
@@ -53,8 +78,22 @@ fi
 
 # 4. Bitwarden auth — interactive via /dev/tty (works under `curl | bash`),
 #    or fully headless via BW_CLIENTID/BW_CLIENTSECRET (+ BW_PASSWORD) env vars.
+#
+# Defensive whitespace trim on credentials: trailing newlines/spaces in env
+# vars (common from copy-paste) make bw auth fail silently. Strip them once
+# here so downstream code doesn't have to worry.
+_strip_ws() { printf '%s' "$1" | awk '{$1=$1; print}'; }
+[ -n "${BW_CLIENTID:-}"     ] && BW_CLIENTID="$(_strip_ws "$BW_CLIENTID")"         && export BW_CLIENTID
+[ -n "${BW_CLIENTSECRET:-}" ] && BW_CLIENTSECRET="$(_strip_ws "$BW_CLIENTSECRET")" && export BW_CLIENTSECRET
+[ -n "${BW_PASSWORD:-}"     ] && BW_PASSWORD="$(_strip_ws "$BW_PASSWORD")"         && export BW_PASSWORD
+
 _have_tty()      { (exec </dev/tty) 2>/dev/null; }
 _bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; }
+# Pure-shell `bw status` JSON parse — avoids python3, which isn't on minimal
+# containers before packages.yaml installs it.
+_bw_status() {
+    bw status 2>/dev/null | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || true
+}
 
 _bw_session_valid() {
     # `bw unlock --check` returns 0 if *any* session is present (env or disk),
@@ -120,7 +159,8 @@ _bw_ensure_session() {
     unset BW_SESSION
 
     local status
-    status=$(bw status 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "error")
+    status="$(_bw_status)"
+    [ -n "$status" ] || status="error"
 
     case "$status" in
         unlocked|locked)
@@ -225,13 +265,9 @@ REPO_PARENT="$HOME/.local/share/chezmoi"
 if [ ! -d "$REPO_PARENT/.git" ]; then
     if ! command_exists git; then
         info "Installing git (required to clone the dotfiles repo)..."
-        if [ "$(id -u)" -eq 0 ]; then
-            apt-get update -qq && apt-get install -y git
-        elif command_exists sudo; then
-            sudo apt-get update -qq && sudo apt-get install -y git
-        else
-            error "git is required but not installed, and sudo is unavailable. Install git manually and re-run."
-        fi
+        export DEBIAN_FRONTEND=noninteractive
+        _apt update -qq
+        _apt install -y git
     fi
     info "Cloning $DOTS_REPO into $REPO_PARENT ..."
     mkdir -p "$(dirname "$REPO_PARENT")"
@@ -243,6 +279,13 @@ if [ ! -d "$REPO_PARENT/.git" ]; then
 else
     info "Chezmoi source already present at $REPO_PARENT."
 fi
+
+# 6a. Bootstrap the Bitwarden items the dotfiles depend on. dot_gitconfig.tmpl
+# reads `credential_helper` from dots-git-secrets at render time; if the item
+# is missing, the very next `chezmoi apply` would fail. setup-bw-items.sh is
+# idempotent and uses only shell + bw (no jq) so it's safe to run pre-apply.
+info "Ensuring Bitwarden items exist..."
+"$REPO_PARENT/scripts/setup-bw-items.sh"
 
 info "Applying dotfiles..."
 chezmoi apply

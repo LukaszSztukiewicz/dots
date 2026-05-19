@@ -72,13 +72,16 @@ export FZF_CTRL_T_OPTS="--preview 'bat --style=numbers --color=always --line-ran
 #   export FZF_DEFAULT_OPTS="--style minimal"
 
 # --- chezmoi / dots helpers ---
-# cap: BW-aware chezmoi apply wrapper
+# cap: BW-aware chezmoi apply wrapper.
+# Hardcoded path avoids invoking `chezmoi source-path` (which acquires the
+# chezmoi state lock and can block if another chezmoi instance is running).
+DOTS_REPO_ROOT="$HOME/.local/share/chezmoi"
 cap() {
-    "$(chezmoi source-path)/../scripts/apply.sh" "$@"
+    "$DOTS_REPO_ROOT/scripts/apply.sh" "$@"
 }
 
 # cdots: jump to dotfiles repo root
-alias cdots='cd "$(chezmoi source-path)/.."'
+alias cdots='cd "$DOTS_REPO_ROOT"'
 
 {{ if .proxy -}}
 # --- proxy ---

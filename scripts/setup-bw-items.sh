@@ -9,16 +9,17 @@ set -euo pipefail
 #     field credential_helper = "store"   (consumed by dot_gitconfig.tmpl)
 #
 # Run manually after `bw login` + `bw unlock` (or with a valid BW_SESSION set).
+# No jq required — we construct the item JSON inline so this is safe to call
+# from install.sh before chezmoi has installed packages.
 
 info()  { echo "[dots] $*"; }
 error() { echo "[dots] ERROR: $*" >&2; exit 1; }
 
 command -v bw >/dev/null 2>&1 || error "bw (Bitwarden CLI) not found in PATH."
-command -v jq >/dev/null 2>&1 || error "jq not found in PATH."
 
-# Make sure the vault is unlocked before we touch it. `bw status` returns
-# 'unlocked' only when a valid BW_SESSION is in scope.
-status=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "error")
+# `bw status` JSON is parsed with sed (not jq/python) so we can run this
+# pre-bootstrap on minimal containers where neither is installed yet.
+status=$(bw status 2>/dev/null | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || echo "error")
 case "$status" in
     unlocked) ;;
     locked|unauthenticated)
@@ -34,12 +35,10 @@ if bw get item "dots-git-secrets" >/dev/null 2>&1; then
     info "dots-git-secrets already exists. Skipping."
 else
     info "Creating dots-git-secrets in Bitwarden..."
-    bw get template item \
-        | jq '.name="dots-git-secrets"
-              | .type=2
-              | .secureNote={"type":0}
-              | .fields=[{"name":"credential_helper","value":"store","type":0,"linkedId":null}]' \
-        | bw encode \
-        | bw create item >/dev/null
+    # Hand-crafted item JSON. type=2 = Secure Note, secureNote.type=0 = Generic.
+    # Field type=0 = Text. This is the same shape `bw get template item` would
+    # produce, just without the jq round-trip.
+    item_json='{"organizationId":null,"collectionIds":null,"folderId":null,"type":2,"name":"dots-git-secrets","notes":null,"favorite":false,"fields":[{"name":"credential_helper","value":"store","type":0,"linkedId":null}],"secureNote":{"type":0}}'
+    printf '%s' "$item_json" | bw encode | bw create item >/dev/null
     info "dots-git-secrets created."
 fi

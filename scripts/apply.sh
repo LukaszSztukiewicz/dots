@@ -10,7 +10,15 @@ set -euo pipefail
 info()  { echo "[dots] $*"; }
 error() { echo "[dots] ERROR: $*" >&2; exit 1; }
 
+# Trim trailing/leading whitespace on env-supplied credentials.
+_strip_ws() { printf '%s' "$1" | awk '{$1=$1; print}'; }
+[ -n "${BW_CLIENTID:-}"     ] && BW_CLIENTID="$(_strip_ws "$BW_CLIENTID")"         && export BW_CLIENTID
+[ -n "${BW_CLIENTSECRET:-}" ] && BW_CLIENTSECRET="$(_strip_ws "$BW_CLIENTSECRET")" && export BW_CLIENTSECRET
+[ -n "${BW_PASSWORD:-}"     ] && BW_PASSWORD="$(_strip_ws "$BW_PASSWORD")"         && export BW_PASSWORD
+
 _have_tty() { (exec </dev/tty) 2>/dev/null; }
+_bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; }
+_bw_status() { bw status 2>/dev/null | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || true; }
 
 _bw_session_valid() {
     # See install.sh for why we use `list folders` instead of `unlock --check`.
@@ -57,7 +65,8 @@ _bw_ensure_session() {
     unset BW_SESSION
 
     local status
-    status=$(bw status 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "error")
+    status="$(_bw_status)"
+    [ -n "$status" ] || status="error"
 
     case "$status" in
         unlocked|locked)
@@ -65,8 +74,15 @@ _bw_ensure_session() {
             info "Unlocking Bitwarden vault..."
             ;;
         unauthenticated)
-            info "Not logged in to Bitwarden. Logging in..."
-            bw login
+            if _bw_have_apikey; then
+                info "Logging in to Bitwarden via API key..."
+                bw login --apikey --quiet
+            elif _have_tty; then
+                info "Not logged in to Bitwarden. Logging in (interactive)..."
+                bw login </dev/tty
+            else
+                error "Bitwarden login required, but stdin is not a TTY and BW_CLIENTID/BW_CLIENTSECRET are unset."
+            fi
             info "Login complete. Unlocking vault..."
             ;;
         *)
