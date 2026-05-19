@@ -18,20 +18,36 @@ _bw_session_valid() {
 }
 
 _bw_unlock_interactive() {
+    local pw err_file unlock_out unlock_rc
+
     if [ -n "${BW_PASSWORD:-}" ]; then
-        BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
+        pw="$BW_PASSWORD"
     elif _have_tty; then
-        local bw_pw=""
         printf '[dots] Bitwarden master password: ' >/dev/tty
-        IFS= read -rs bw_pw </dev/tty
+        IFS= read -rs pw </dev/tty
         printf '\n' >/dev/tty
-        [ -n "$bw_pw" ] || error "Empty master password."
-        BW_SESSION=$(BW_PASSWORD="$bw_pw" bw unlock --passwordenv BW_PASSWORD --raw)
-        unset bw_pw
+        [ -n "$pw" ] || error "Empty master password."
     else
         error "Bitwarden unlock required, no TTY and BW_PASSWORD unset."
     fi
-    export BW_SESSION
+
+    err_file=$(mktemp)
+    if unlock_out=$(BW_PASSWORD="$pw" bw unlock --passwordenv BW_PASSWORD --raw 2>"$err_file"); then
+        unlock_rc=0
+    else
+        unlock_rc=$?
+    fi
+    unset pw
+
+    if [ "$unlock_rc" -ne 0 ]; then
+        local err_msg
+        err_msg=$(cat "$err_file")
+        rm -f "$err_file"
+        error "bw unlock failed (exit $unlock_rc): ${err_msg:-<no stderr output>}"
+    fi
+    rm -f "$err_file"
+    [ -n "$unlock_out" ] || error "bw unlock returned exit 0 but no session token."
+    export BW_SESSION="$unlock_out"
 }
 
 _bw_ensure_session() {
