@@ -143,13 +143,29 @@ else
     info "Chezmoi config already exists at $CHEZMOI_CFG — skipping prompts."
 fi
 
-# 6. Apply dotfiles
-if chezmoi source-path &>/dev/null; then
-    info "Chezmoi already initialised — running apply..."
-    chezmoi apply
+# 6. Clone the dotfiles repo into the chezmoi source dir (if not already there) and apply.
+#    chezmoi.toml above sets sourceDir = $HOME/.local/share/chezmoi/home, so the repo
+#    must live at $HOME/.local/share/chezmoi/ with the source state under home/.
+REPO_PARENT="$HOME/.local/share/chezmoi"
+if [ ! -d "$REPO_PARENT/.git" ]; then
+    if ! command_exists git; then
+        info "Installing git (required to clone the dotfiles repo)..."
+        if [ "$(id -u)" -eq 0 ]; then
+            apt-get update -qq && apt-get install -y git
+        elif command_exists sudo; then
+            sudo apt-get update -qq && sudo apt-get install -y git
+        else
+            error "git is required but not installed, and sudo is unavailable. Install git manually and re-run."
+        fi
+    fi
+    info "Cloning $DOTS_REPO into $REPO_PARENT ..."
+    mkdir -p "$(dirname "$REPO_PARENT")"
+    git clone "$DOTS_REPO" "$REPO_PARENT"
 else
-    info "Initialising Chezmoi from $DOTS_REPO ..."
-    chezmoi init --apply "$DOTS_REPO"
+    info "Chezmoi source already present at $REPO_PARENT."
 fi
+
+info "Applying dotfiles..."
+chezmoi apply
 
 info "Done. Run 'cap' to apply future changes."
