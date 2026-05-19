@@ -9,8 +9,7 @@ packages:
     ubuntu: tmux
   - name: vim
     ubuntu: vim
-  - name: neovim
-    ubuntu: neovim
+  # neovim: install via scripts/install-nvim.sh (apt nvim is too old for LazyVim).
   - name: ripgrep
     ubuntu: ripgrep
   - name: fzf
