@@ -20,10 +20,29 @@ git clone https://github.com/lsztuk/dots ~/dots
 ~/dots/install.sh
 ```
 
-**Headless mode** (servers / cloud-init — Bitwarden auth remains interactive):
+The `curl | bash` form is supported: interactive prompts (Bitwarden login/unlock,
+Chezmoi config questions) are read from `/dev/tty`, so they still work even though
+the script itself was piped from `curl`.
+
+**Headless mode** (servers / cloud-init / CI — no TTY at all):
+
+Set every value the script would otherwise prompt for via env vars. Bitwarden
+needs an [API key](https://bitwarden.com/help/personal-api-key/) for login and
+the master password for unlock; the rest seed the per-machine Chezmoi config.
+
 ```bash
-MACHINE_ROLE=server GIT_NAME="Lukasz Sztukiewicz" GIT_EMAIL="ops@example.com" ~/dots/install.sh
+MACHINE_ROLE=server \
+GIT_NAME="Lukasz Sztukiewicz" \
+GIT_EMAIL="ops@example.com" \
+BW_CLIENTID="user.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
+BW_CLIENTSECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+BW_PASSWORD="<vault master password>" \
+~/dots/install.sh
 ```
+
+If `BW_CLIENTID`/`BW_CLIENTSECRET` (or `BW_PASSWORD`) are missing **and** no TTY is
+available, `install.sh` aborts with an explicit message rather than hanging on a
+prompt nobody can answer.
 
 ## Day-to-day workflow
 

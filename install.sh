@@ -31,7 +31,11 @@ if ! command_exists bw; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 4. Bitwarden auth — always interactive
+# 4. Bitwarden auth — interactive via /dev/tty (works under `curl | bash`),
+#    or fully headless via BW_CLIENTID/BW_CLIENTSECRET (+ BW_PASSWORD) env vars.
+_have_tty()      { (exec </dev/tty) 2>/dev/null; }
+_bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; }
+
 _bw_ensure_session() {
     local status
     status=$(bw status 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "error")
@@ -39,23 +43,36 @@ _bw_ensure_session() {
     case "$status" in
         unlocked)
             info "Bitwarden vault is already unlocked."
+            return
             ;;
         locked)
             info "Bitwarden vault is locked. Unlocking..."
-            BW_SESSION=$(bw unlock --raw)
-            export BW_SESSION
             ;;
         unauthenticated)
-            info "Not logged in to Bitwarden. Logging in..."
-            bw login
+            if _bw_have_apikey; then
+                info "Logging in to Bitwarden via API key..."
+                bw login --apikey --quiet
+            elif _have_tty; then
+                info "Not logged in to Bitwarden. Logging in (interactive)..."
+                bw login </dev/tty
+            else
+                error "Bitwarden login required, but stdin is not a TTY and BW_CLIENTID/BW_CLIENTSECRET are unset. Re-run from a terminal, or set the API-key env vars (see README -> Headless mode)."
+            fi
             info "Login complete. Unlocking vault..."
-            BW_SESSION=$(bw unlock --raw)
-            export BW_SESSION
             ;;
         *)
             error "Could not determine Bitwarden status (got: '$status'). Is bw installed?"
             ;;
     esac
+
+    if [ -n "${BW_PASSWORD:-}" ]; then
+        BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
+    elif _have_tty; then
+        BW_SESSION=$(bw unlock --raw </dev/tty)
+    else
+        error "Bitwarden unlock required, but stdin is not a TTY and BW_PASSWORD is unset. Re-run from a terminal, or set BW_PASSWORD."
+    fi
+    export BW_SESSION
 }
 
 _bw_ensure_session
@@ -73,20 +90,32 @@ if [ ! -f "$CHEZMOI_CFG" ]; then
     proxy="${PROXY:-}"
 
     if [ -z "$machine_role" ]; then
-        read -rp "Machine role (workstation/server/laptop) [workstation]: " machine_role
+        if _have_tty; then
+            read -rp "Machine role (workstation/server/laptop) [workstation]: " machine_role </dev/tty
+        fi
         machine_role="${machine_role:-workstation}"
     fi
 
     if [ -z "$git_name" ]; then
-        read -rp "Git full name: " git_name
+        if _have_tty; then
+            read -rp "Git full name: " git_name </dev/tty
+        else
+            error "GIT_NAME is required (no TTY available). Set it as an environment variable."
+        fi
     fi
 
     if [ -z "$git_email" ]; then
-        read -rp "Git email: " git_email
+        if _have_tty; then
+            read -rp "Git email: " git_email </dev/tty
+        else
+            error "GIT_EMAIL is required (no TTY available). Set it as an environment variable."
+        fi
     fi
 
     if [ -z "$proxy" ]; then
-        read -rp "HTTP proxy (leave blank if none): " proxy
+        if _have_tty; then
+            read -rp "HTTP proxy (leave blank if none): " proxy </dev/tty
+        fi
     fi
 
     validate_no_quotes() {
