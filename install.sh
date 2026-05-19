@@ -56,17 +56,51 @@ fi
 _have_tty()      { (exec </dev/tty) 2>/dev/null; }
 _bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; }
 
+_bw_session_valid() { [ -n "${BW_SESSION:-}" ] && bw unlock --check >/dev/null 2>&1; }
+
+_bw_unlock_interactive() {
+    if [ -n "${BW_PASSWORD:-}" ]; then
+        BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
+    elif _have_tty; then
+        # Read the master password ourselves and hand it to bw via env.
+        # `bw unlock --raw </dev/tty` reads from /dev/tty directly and has
+        # been observed to mis-read the password under `curl | bash` (decrypt
+        # fails on a correct password). Bash's `read -s` is reliable.
+        local bw_pw=""
+        printf '[dots] Bitwarden master password: ' >/dev/tty
+        IFS= read -rs bw_pw </dev/tty
+        printf '\n' >/dev/tty
+        [ -n "$bw_pw" ] || error "Empty master password."
+        BW_SESSION=$(BW_PASSWORD="$bw_pw" bw unlock --passwordenv BW_PASSWORD --raw)
+        unset bw_pw
+    else
+        error "Bitwarden unlock required, but stdin is not a TTY and BW_PASSWORD is unset. Re-run from a terminal, or set BW_PASSWORD."
+    fi
+    export BW_SESSION
+}
+
 _bw_ensure_session() {
+    # Fast path: a working BW_SESSION already in env. Verify with --check
+    # (don't trust `bw status` alone — it returns "unlocked" for stale
+    # sessions too, which then mis-fall-through to a tty prompt inside
+    # chezmoi's bw subprocess).
+    if _bw_session_valid; then
+        info "Bitwarden session valid."
+        return
+    fi
+
+    # Drop any stale BW_SESSION so bw can't try to use it.
+    unset BW_SESSION
+
     local status
     status=$(bw status 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "error")
 
     case "$status" in
-        unlocked)
-            info "Bitwarden vault is already unlocked."
-            return
-            ;;
-        locked)
-            info "Bitwarden vault is locked. Unlocking..."
+        unlocked|locked)
+            # If status is "unlocked" but we got here, BW_SESSION wasn't valid in env.
+            # Lock to force a clean re-unlock that gives us a fresh raw session.
+            [ "$status" = "unlocked" ] && bw lock >/dev/null 2>&1 || true
+            info "Unlocking Bitwarden vault..."
             ;;
         unauthenticated)
             if _bw_have_apikey; then
@@ -85,26 +119,7 @@ _bw_ensure_session() {
             ;;
     esac
 
-    if [ -n "${BW_PASSWORD:-}" ]; then
-        BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
-    elif _have_tty; then
-        # Read the master password ourselves and hand it to bw via env.
-        # `bw unlock --raw </dev/tty` reads from /dev/tty directly and has
-        # been observed to mis-read the password under `curl | bash` (decrypt
-        # fails on a correct password). Bash's `read -s` is reliable.
-        local bw_pw=""
-        printf '[dots] Bitwarden master password: ' >/dev/tty
-        IFS= read -rs bw_pw </dev/tty
-        printf '\n' >/dev/tty
-        if [ -z "$bw_pw" ]; then
-            error "Empty master password."
-        fi
-        BW_SESSION=$(BW_PASSWORD="$bw_pw" bw unlock --passwordenv BW_PASSWORD --raw)
-        unset bw_pw
-    else
-        error "Bitwarden unlock required, but stdin is not a TTY and BW_PASSWORD is unset. Re-run from a terminal, or set BW_PASSWORD."
-    fi
-    export BW_SESSION
+    _bw_unlock_interactive
 }
 
 _bw_ensure_session
