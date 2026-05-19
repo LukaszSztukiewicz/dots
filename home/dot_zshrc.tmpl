@@ -5,6 +5,14 @@ HISTSIZE=10000
 SAVEHIST=10000
 HISTFILE=~/.zsh_history
 
+# --- default editor ---
+# Honored by git fallback, crontab, less !command, gpg, etc.
+# sudoedit additionally needs `Defaults env_editor` (or an explicit
+# `Defaults editor=/usr/bin/vim`) in /etc/sudoers to pick this up.
+export EDITOR=vim
+export VISUAL=vim
+export GIT_EDITOR=vim
+
 # --- prompt ---
 autoload -Uz promptinit && promptinit
 prompt default
