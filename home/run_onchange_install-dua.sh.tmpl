@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Auto-install dua-cli on chezmoi apply. Skipped on server-role machines.
+#
+# install-dua.sh hash: {{ include "../scripts/install-dua.sh" | sha256sum }}
+
+machine_role="{{ .machineRole }}"
+if [ "$machine_role" = "server" ]; then
+    echo "[dots] Skipping dua-cli install on server role."
+    exit 0
+fi
+
+exec "$(chezmoi source-path)/../scripts/install-dua.sh"
