@@ -99,9 +99,11 @@ _bw_session_valid() {
     # `bw unlock --check` returns 0 if *any* session is present (env or disk),
     # not "is BW_SESSION valid". A stale env token passes --check but fails on
     # real operations like `bw get item`. `bw list folders` actually decrypts
-    # vault data, which exercises the session end-to-end. We don't pass --raw
-    # because bw 2026.x rejects that flag on `list` even though it's a global.
-    [ -n "${BW_SESSION:-}" ] && bw list folders >/dev/null 2>&1
+    # vault data, which exercises the session end-to-end. --session passes
+    # the token explicitly (bw 2026.x sometimes ignores env), --nointeraction
+    # prevents falling back to a tty prompt that reads garbage from the curl
+    # pipe under `curl|bash`.
+    [ -n "${BW_SESSION:-}" ] && bw --nointeraction --session "$BW_SESSION" list folders >/dev/null 2>&1
 }
 
 _bw_unlock_interactive() {
@@ -253,10 +255,30 @@ sourceDir = "$HOME/.local/share/chezmoi/home"
   gitName     = "$git_name"
   gitEmail    = "$git_email"
   proxy       = "$proxy"
+
+# Route chezmoi's bitwarden integration through our wrapper, which
+# always passes --session and --nointeraction. bw 2026.x has been
+# observed to silently ignore BW_SESSION env in some flows; the
+# wrapper makes the session explicit. Wrapper exits cleanly if
+# BW_SESSION is unset, so a re-apply without unlocking the vault
+# first fails loudly instead of dropping into bw's tty prompt.
+[bitwarden]
+  command = "$HOME/.local/share/chezmoi/scripts/bw-with-session.sh"
 EOF
     info "Config written to $CHEZMOI_CFG"
 else
     info "Chezmoi config already exists at $CHEZMOI_CFG — skipping prompts."
+fi
+
+# 5a. Migrate older configs that don't yet wire chezmoi's bitwarden integration
+# through the bw-with-session.sh wrapper. Idempotent — append only if missing.
+if [ -f "$CHEZMOI_CFG" ] && ! grep -q '^\[bitwarden\]' "$CHEZMOI_CFG"; then
+    info "Adding [bitwarden] wrapper to existing chezmoi.toml..."
+    cat >> "$CHEZMOI_CFG" << EOF
+
+[bitwarden]
+  command = "$HOME/.local/share/chezmoi/scripts/bw-with-session.sh"
+EOF
 fi
 
 # 6. Clone the dotfiles repo into the chezmoi source dir (if not already there) and apply.

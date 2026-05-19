@@ -21,9 +21,9 @@ _bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; 
 _bw_status() { bw status 2>/dev/null | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || true; }
 
 _bw_session_valid() {
-    # See install.sh for why this is `list folders` (not `unlock --check`)
-    # and why we don't pass `--raw` (bw rejects it on `list`).
-    [ -n "${BW_SESSION:-}" ] && bw list folders >/dev/null 2>&1
+    # See install.sh for why this is `list folders` (not `unlock --check`),
+    # why we don't pass `--raw`, and why we use --session/--nointeraction.
+    [ -n "${BW_SESSION:-}" ] && bw --nointeraction --session "$BW_SESSION" list folders >/dev/null 2>&1
 }
 
 _bw_unlock_interactive() {

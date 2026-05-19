@@ -16,18 +16,21 @@ info()  { echo "[dots] $*"; }
 error() { echo "[dots] ERROR: $*" >&2; exit 1; }
 
 command -v bw >/dev/null 2>&1 || error "bw (Bitwarden CLI) not found in PATH."
-
-# Session validity probe. `bw status` is unreliable here — when install.sh
-# unlocked with `--raw` the on-disk state stays "locked" even though
-# BW_SESSION is a perfectly good session. We do a real decrypt-requiring
-# call (`bw list folders`) and surface bw's stderr if it dies, so the user
-# gets the actual error.
 [ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run install.sh or \`bw unlock\` first."
-bw_probe_err=$(bw list folders 2>&1 >/dev/null) || \
+
+# bw helper: always pass the session explicitly and disable interactive
+# prompts. bw 2026.x (Rust CLI) was observed to ignore BW_SESSION env in
+# some flows and fall back to a stdin password prompt — under `curl|bash`
+# that reads garbage from the script pipe and "successfully fails" decrypt.
+# --nointeraction makes it error out instead.
+_bw() { bw --nointeraction --session "$BW_SESSION" "$@"; }
+
+# Session validity probe.
+bw_probe_err=$(_bw list folders 2>&1 >/dev/null) || \
     error "Bitwarden vault not accessible. bw said: ${bw_probe_err:-<no stderr>}"
 
 # --- dots-git-secrets ---
-if bw get item "dots-git-secrets" >/dev/null 2>&1; then
+if _bw get item "dots-git-secrets" >/dev/null 2>&1; then
     info "dots-git-secrets already exists. Skipping."
 else
     info "Creating dots-git-secrets in Bitwarden..."
@@ -35,6 +38,8 @@ else
     # Field type=0 = Text. This is the same shape `bw get template item` would
     # produce, just without the jq round-trip.
     item_json='{"organizationId":null,"collectionIds":null,"folderId":null,"type":2,"name":"dots-git-secrets","notes":null,"favorite":false,"fields":[{"name":"credential_helper","value":"store","type":0,"linkedId":null}],"secureNote":{"type":0}}'
-    printf '%s' "$item_json" | bw encode | bw create item >/dev/null
+    # `bw encode` is local base64 with no vault access, so it doesn't need the
+    # session. `bw create item` does.
+    printf '%s' "$item_json" | bw encode | _bw create item >/dev/null
     info "dots-git-secrets created."
 fi
