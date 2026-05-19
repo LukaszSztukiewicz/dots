@@ -7,6 +7,10 @@ packages:
     ubuntu: curl
   - name: tmux
     ubuntu: tmux
+  # ncurses-term: provides the tmux-256color terminfo entry. Without it,
+  # p10k inside tmux falls back to limited colors on minimal images.
+  - name: ncurses-term
+    ubuntu: ncurses-term
   - name: vim
     ubuntu: vim
   # neovim: install via scripts/install-nvim.sh (apt nvim is too old for LazyVim).

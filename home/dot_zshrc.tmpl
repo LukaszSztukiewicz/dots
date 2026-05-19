@@ -14,7 +14,11 @@ esac
 # --- Oh My Zsh ---
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME=""  # theme handled by powerlevel10k below
-plugins=(git fzf zsh-autosuggestions zsh-syntax-highlighting you-should-use zsh-bat zsh-vi-mode)
+# Note: `fzf` plugin removed — on minimal Ubuntu/Debian images the apt fzf
+# package omits /usr/share/doc/fzf/examples/ and the OMZ plugin errors at
+# startup. fzf keybindings come from ~/.fzf.zsh below (if fzf was installed
+# via the upstream installer).
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting you-should-use zsh-bat zsh-vi-mode)
 [ -s "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"
 
 # --- powerlevel10k theme ---

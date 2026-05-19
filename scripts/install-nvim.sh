@@ -9,6 +9,23 @@ set -euo pipefail
 
 TAG="${NVIM_VERSION:-stable}"   # override with NVIM_VERSION=v0.11.5 (etc.) if needed.
 
+# Modern nvim binaries (0.11+) require glibc >= 2.32 (Ubuntu 22.04+). On older
+# systems the binary loads but every invocation errors with
+# `version 'GLIBC_2.32' not found`. Refuse upfront with a clear message rather
+# than half-installing and leaving the user a broken `nvim` in PATH.
+if command -v ldd >/dev/null 2>&1; then
+    glibc=$(ldd --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+    required=2.32
+    if [ -n "$glibc" ] && awk -v g="$glibc" -v r="$required" 'BEGIN{exit !(g+0 < r+0)}'; then
+        echo "[dots] nvim: this system has glibc $glibc; nvim binaries need >= $required." >&2
+        echo "[dots] Options:" >&2
+        echo "[dots]   - Use a newer base image (Ubuntu 22.04+, Debian 12+)." >&2
+        echo "[dots]   - Build neovim from source." >&2
+        echo "[dots]   - Skip nvim install on this host." >&2
+        exit 1
+    fi
+fi
+
 arch=$(uname -m)
 case "$arch" in
     x86_64)  asset="nvim-linux-x86_64.tar.gz"; prefix="/opt/nvim-linux-x86_64" ;;
