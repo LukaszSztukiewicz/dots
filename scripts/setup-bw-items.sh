@@ -17,18 +17,13 @@ error() { echo "[dots] ERROR: $*" >&2; exit 1; }
 
 command -v bw >/dev/null 2>&1 || error "bw (Bitwarden CLI) not found in PATH."
 
-# `bw status` JSON is parsed with sed (not jq/python) so we can run this
-# pre-bootstrap on minimal containers where neither is installed yet.
-status=$(bw status 2>/dev/null | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || echo "error")
-case "$status" in
-    unlocked) ;;
-    locked|unauthenticated)
-        error "Bitwarden vault is $status. Run \`bw unlock\` (or set BW_SESSION) and retry."
-        ;;
-    *)
-        error "Could not determine Bitwarden status (got: '$status')."
-        ;;
-esac
+# `bw status` is unreliable as a session-validity check: when the vault was
+# unlocked with `--raw` (which is what install.sh does) the on-disk state
+# stays "locked" even though BW_SESSION in env is a working session. Test
+# the session end-to-end by hitting an operation that requires decryption.
+if [ -z "${BW_SESSION:-}" ] || ! bw list folders --raw >/dev/null 2>&1; then
+    error "Bitwarden vault is not accessible. Set BW_SESSION (e.g. \`export BW_SESSION=\$(bw unlock --raw)\`) and retry."
+fi
 
 # --- dots-git-secrets ---
 if bw get item "dots-git-secrets" >/dev/null 2>&1; then
