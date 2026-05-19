@@ -16,7 +16,7 @@ curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install
 
 Or clone and run locally:
 ```bash
-git clone https://github.com/lsztuk/dots ~/dots
+git clone https://github.com/LukaszSztukiewicz/dots ~/dots
 ~/dots/install.sh
 ```
 
@@ -51,9 +51,15 @@ re-testing the bootstrap on a machine that already has a partial install.
 Dotfiles already applied to `$HOME` are **not** touched — those are managed by
 chezmoi.
 
+The env var has to apply to `bash` (not to `curl`), so put it on the right
+side of the pipe:
+
 ```bash
-DOTS_RESET=1 curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | DOTS_RESET=1 bash
 ```
+
+The same applies to any other env var (`MACHINE_ROLE`, `GIT_NAME`,
+`BW_CLIENTID`, …) when using the `curl | bash` form.
 
 ## Day-to-day workflow
 

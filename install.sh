@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DOTS_REPO="https://github.com/lsztuk/dots"
+DOTS_REPO="${DOTS_REPO:-https://github.com/LukaszSztukiewicz/dots}"
 
 info()  { echo "[dots] $*"; }
 error() { echo "[dots] ERROR: $*" >&2; exit 1; }
