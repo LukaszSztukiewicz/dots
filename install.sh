@@ -98,9 +98,10 @@ _bw_status() {
 _bw_session_valid() {
     # `bw unlock --check` returns 0 if *any* session is present (env or disk),
     # not "is BW_SESSION valid". A stale env token passes --check but fails on
-    # real operations like `bw get item`. `bw list folders --raw` actually
-    # decrypts vault data, which exercises the session end-to-end.
-    [ -n "${BW_SESSION:-}" ] && bw list folders --raw >/dev/null 2>&1
+    # real operations like `bw get item`. `bw list folders` actually decrypts
+    # vault data, which exercises the session end-to-end. We don't pass --raw
+    # because bw 2026.x rejects that flag on `list` even though it's a global.
+    [ -n "${BW_SESSION:-}" ] && bw list folders >/dev/null 2>&1
 }
 
 _bw_unlock_interactive() {

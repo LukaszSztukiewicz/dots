@@ -17,13 +17,14 @@ error() { echo "[dots] ERROR: $*" >&2; exit 1; }
 
 command -v bw >/dev/null 2>&1 || error "bw (Bitwarden CLI) not found in PATH."
 
-# `bw status` is unreliable as a session-validity check: when the vault was
-# unlocked with `--raw` (which is what install.sh does) the on-disk state
-# stays "locked" even though BW_SESSION in env is a working session. Test
-# the session end-to-end by hitting an operation that requires decryption.
-if [ -z "${BW_SESSION:-}" ] || ! bw list folders --raw >/dev/null 2>&1; then
-    error "Bitwarden vault is not accessible. Set BW_SESSION (e.g. \`export BW_SESSION=\$(bw unlock --raw)\`) and retry."
-fi
+# Session validity probe. `bw status` is unreliable here — when install.sh
+# unlocked with `--raw` the on-disk state stays "locked" even though
+# BW_SESSION is a perfectly good session. We do a real decrypt-requiring
+# call (`bw list folders`) and surface bw's stderr if it dies, so the user
+# gets the actual error.
+[ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run install.sh or \`bw unlock\` first."
+bw_probe_err=$(bw list folders 2>&1 >/dev/null) || \
+    error "Bitwarden vault not accessible. bw said: ${bw_probe_err:-<no stderr>}"
 
 # --- dots-git-secrets ---
 if bw get item "dots-git-secrets" >/dev/null 2>&1; then
