@@ -24,5 +24,4 @@ workstation_only:
     ubuntu: bat
   - name: jq
     ubuntu: jq
-  - name: btop
-    ubuntu: btop
+  # btop: install via scripts/install-btop.sh (not in older Ubuntu / Debian apt).

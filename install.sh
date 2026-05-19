@@ -88,7 +88,19 @@ _bw_ensure_session() {
     if [ -n "${BW_PASSWORD:-}" ]; then
         BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
     elif _have_tty; then
-        BW_SESSION=$(bw unlock --raw </dev/tty)
+        # Read the master password ourselves and hand it to bw via env.
+        # `bw unlock --raw </dev/tty` reads from /dev/tty directly and has
+        # been observed to mis-read the password under `curl | bash` (decrypt
+        # fails on a correct password). Bash's `read -s` is reliable.
+        local bw_pw=""
+        printf '[dots] Bitwarden master password: ' >/dev/tty
+        IFS= read -rs bw_pw </dev/tty
+        printf '\n' >/dev/tty
+        if [ -z "$bw_pw" ]; then
+            error "Empty master password."
+        fi
+        BW_SESSION=$(BW_PASSWORD="$bw_pw" bw unlock --passwordenv BW_PASSWORD --raw)
+        unset bw_pw
     else
         error "Bitwarden unlock required, but stdin is not a TTY and BW_PASSWORD is unset. Re-run from a terminal, or set BW_PASSWORD."
     fi
