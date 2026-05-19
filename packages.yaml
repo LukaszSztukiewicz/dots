@@ -24,8 +24,6 @@ packages:
     ubuntu: python3
 
 workstation_only:
-  - name: bat
-    ubuntu: bat
   - name: jq
     ubuntu: jq
   # btop: install via scripts/install-btop.sh (not in older Ubuntu / Debian apt).
