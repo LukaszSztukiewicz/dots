@@ -5,6 +5,10 @@
 */ -}}
 {{- if eq .machineRole "laptop" }}
 # -- laptop tmux config --
+#
+# Note: changes here only affect *new* tmux sessions. To pick up edits in a
+# running server: `prefix r` (reloads in place), or `tmux kill-server` for a
+# clean reset.
 unbind C-b
 set -g prefix C-Space
 bind C-Space send-prefix
@@ -12,6 +16,8 @@ set -g mouse on
 bind -n WheelUpPane if-shell -F -t = "#{mouse_any_flag}" "send-keys -M" "if -Ft= '#{pane_in_mode}' 'send-keys -M' 'copy-mode -e; send-keys -M'"
 set-option -g history-limit 50000
 set-option -sg escape-time 10
+# reload config in place
+bind r source-file ~/.config/tmux/tmux.conf \; display "Config reloaded"
 {{- else }}
 # -- workstation tmux config (default Ctrl-b prefix) --
 
