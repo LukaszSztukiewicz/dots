@@ -22,7 +22,7 @@ fi
 # 3. Install Bitwarden CLI
 if ! command_exists bw; then
     info "Installing Bitwarden CLI..."
-    bw_version="2024.3.1"
+    bw_version="2026.4.1"
     curl -fsSL "https://github.com/bitwarden/clients/releases/download/cli-v${bw_version}/bw-linux-${bw_version}.zip" \
         -o /tmp/bw.zip
     unzip -q /tmp/bw.zip -d /tmp/bw-bin
