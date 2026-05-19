@@ -180,7 +180,11 @@ if [ ! -d "$REPO_PARENT/.git" ]; then
     fi
     info "Cloning $DOTS_REPO into $REPO_PARENT ..."
     mkdir -p "$(dirname "$REPO_PARENT")"
-    git clone "$DOTS_REPO" "$REPO_PARENT"
+    # Disable git's credential prompts so a wrong URL or a private repo fails
+    # fast with a clear error instead of hanging on a password prompt that
+    # can't succeed (GitHub no longer accepts passwords for HTTPS git ops).
+    GIT_TERMINAL_PROMPT=0 git clone "$DOTS_REPO" "$REPO_PARENT" \
+        || error "git clone $DOTS_REPO failed. If the repo is private, clone it manually into $REPO_PARENT (e.g. via SSH) and re-run."
 else
     info "Chezmoi source already present at $REPO_PARENT."
 fi
