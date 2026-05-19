@@ -25,3 +25,5 @@ workstation_only:
     ubuntu: bat
   - name: jq
     ubuntu: jq
+  - name: btop
+    ubuntu: btop
