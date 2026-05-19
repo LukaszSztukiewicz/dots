@@ -14,12 +14,16 @@ esac
 # --- Oh My Zsh ---
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME=""  # theme handled by powerlevel10k below
-# Note: `fzf` plugin removed — on minimal Ubuntu/Debian images the apt fzf
-# package omits /usr/share/doc/fzf/examples/ and the OMZ plugin errors at
-# startup. fzf keybindings come from ~/.fzf.zsh below (if fzf was installed
-# via the upstream installer).
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting you-should-use zsh-bat zsh-vi-mode)
+# fzf integration comes via ~/.fzf.zsh (installed by scripts/install-fzf.sh)
+# rather than the OMZ fzf plugin, which errors out when the Debian/Ubuntu
+# fzf package doesn't ship /usr/share/doc/fzf/examples/.
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting you-should-use)
 [ -s "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"
+
+# Built-in zsh vi-mode (replaces the heavier zsh-vi-mode plugin we used to
+# pull). Must come AFTER OMZ load so OMZ's default emacs bindings don't
+# clobber it.
+bindkey -v
 
 # --- powerlevel10k theme ---
 P10K_THEME="$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme"

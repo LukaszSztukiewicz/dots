@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Auto-install fzf on chezmoi apply. Skipped on server-role machines.
+# See run_onchange_install-btop.sh.tmpl for why we use {{ .chezmoi.sourceDir }}
+# instead of `$(chezmoi source-path)` (nested chezmoi deadlocks on the state lock).
+#
+# install-fzf.sh hash: {{ include "../scripts/install-fzf.sh" | sha256sum }}
+
+machine_role="{{ .machineRole }}"
+if [ "$machine_role" = "server" ]; then
+    echo "[dots] Skipping fzf install on server role."
+    exit 0
+fi
+
+exec "{{ .chezmoi.sourceDir }}/../scripts/install-fzf.sh"
