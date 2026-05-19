@@ -85,9 +85,52 @@ To add more secrets, create a new Bitwarden item and fetch in a template:
 {{ (index $s "my-field").value }}
 ```
 
+```bash
+# session is still set from your last install.sh run; export it again if needed
+apt-get install -y jq
+
+bw get template item \
+| jq '.name="dots-git-secrets"
+        | .type=2
+        | .secureNote={"type":0}
+        | .fields=[{"name":"credential_helper","value":"store","type":0,"linkedId":null}]' \
+| bw encode \
+| bw create item
+```
+
 ## Adding packages
 
 Edit `packages.yaml` at the repo root, then run `cap`. The `run_onchange_` script detects the change and re-runs `apt-get install`.
+
+## Optional language toolchains
+
+The shipped `.zshrc` has guarded init blocks for five version managers, so each
+costs ~nothing until you actually install it. Install on demand:
+
+| Tool | Install command | Purpose |
+|---|---|---|
+| **uv** | `~/dots/scripts/install-uv.sh` | Fast Python package / project manager (Astral) |
+| **nvm** | `~/dots/scripts/install-nvm.sh` | Node version manager |
+| **juliaup** | `~/dots/scripts/install-juliaup.sh` | Julia version manager |
+| **conda** | `~/dots/scripts/install-conda.sh` | Miniconda into `~/miniconda3` |
+| **sdkman** | `~/dots/scripts/install-sdkman.sh` | JVM toolchain manager (Java/Kotlin/Gradle/...) |
+
+After running one, open a new shell. None of the scripts modify `.zshrc` — the
+init blocks are already there, gated on `[ -d ~/.<tool> ]`-style checks.
+
+Override versions/paths with env vars:
+- `NVM_VERSION=v0.40.0 ~/dots/scripts/install-nvm.sh`
+- `CONDA_PREFIX_DIR=/opt/miniconda ~/dots/scripts/install-conda.sh`
+
+## Per-machine setup (one-time)
+
+After the first `chezmoi apply` on a new machine:
+
+- **Powerlevel10k prompt** — run `p10k configure` once. The config is saved to
+  `~/.p10k.zsh` and is not tracked by chezmoi (it's machine-specific).
+- **sudoedit honors $EDITOR** — add `Defaults env_editor` via `sudo visudo` if
+  you want `sudoedit` to follow the `EDITOR=vim` env var instead of the
+  alternatives default.
 
 ## Repo structure
 
@@ -96,4 +139,12 @@ home/           Chezmoi source directory — applied to $HOME
 packages.yaml   Package list (consumed at Chezmoi render time, not by shell)
 scripts/        Helper scripts — never written to $HOME
 install.sh      One-shot bootstrap for a new machine
+```
+
+## Troubleshooting
+You have two vault items named dots-git-secrets — bw get item <name> only works when the name is unique. Inspect both, keep the one you want, delete the other.
+
+```
+ bw get item <id> | jq '{name, fields}'
+ bw delete item <id>
 ```

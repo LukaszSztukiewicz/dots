@@ -10,4 +10,12 @@ echo "[dots] Installing packages..."
 sudo apt-get update -qq
 sudo apt-get install -y{{ range $all }} {{ .ubuntu }}{{ end }}
 
+# Ubuntu ships `fd` as `fdfind`. Create a `fd` shim in ~/.local/bin so the
+# fzf env vars in .zshrc work without per-distro branching.
+if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+    echo "[dots] linked $(command -v fdfind) -> $HOME/.local/bin/fd"
+fi
+
 echo "[dots] Package installation complete."

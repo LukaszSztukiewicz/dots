@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Idempotently clone Oh My Zsh, plugins, and the powerlevel10k theme used
+# by dot_zshrc.tmpl. Re-runs are a no-op once everything is present.
+# Updates are NOT pulled automatically — to refresh, run `cd <dir> && git pull`
+# or remove the directory and re-apply.
+
+ZSH_DIR="$HOME/.oh-my-zsh"
+ZSH_CUSTOM="$ZSH_DIR/custom"
+
+if ! command -v git >/dev/null; then
+    echo "[dots] git not found; install it first (it should be in packages.yaml)." >&2
+    exit 1
+fi
+
+clone_if_missing() {
+    local dest="$1" url="$2"
+    if [ -d "$dest/.git" ]; then
+        return 0
+    fi
+    echo "[dots] cloning $url -> $dest"
+    git clone --depth 1 "$url" "$dest"
+}
+
+mkdir -p "$ZSH_CUSTOM/plugins" "$ZSH_CUSTOM/themes"
+
+# Oh My Zsh framework
+clone_if_missing "$ZSH_DIR" https://github.com/ohmyzsh/ohmyzsh
+
+# Plugins (the `you-should-use` plugin dir name must match the OMZ plugins=() entry,
+# even though the upstream repo is `zsh-you-should-use`).
+clone_if_missing "$ZSH_CUSTOM/plugins/zsh-autosuggestions"     https://github.com/zsh-users/zsh-autosuggestions
+clone_if_missing "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" https://github.com/zsh-users/zsh-syntax-highlighting
+clone_if_missing "$ZSH_CUSTOM/plugins/you-should-use"          https://github.com/MichaelAquilina/zsh-you-should-use
+clone_if_missing "$ZSH_CUSTOM/plugins/zsh-bat"                 https://github.com/fdellwing/zsh-bat
+clone_if_missing "$ZSH_CUSTOM/plugins/zsh-vi-mode"             https://github.com/jeffreytse/zsh-vi-mode
+
+# Theme
+clone_if_missing "$ZSH_CUSTOM/themes/powerlevel10k" https://github.com/romkatv/powerlevel10k
+
+echo "[dots] OMZ + plugins + powerlevel10k ready."
