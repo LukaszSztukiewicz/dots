@@ -7,6 +7,26 @@ info()  { echo "[dots] $*"; }
 error() { echo "[dots] ERROR: $*" >&2; exit 1; }
 command_exists() { command -v "$1" &>/dev/null; }
 
+# 0. Optional reset — wipes install-side state so the rest of the script runs
+#    as if on a fresh machine. Does NOT touch dotfiles already applied to $HOME
+#    (those are owned by chezmoi). Set DOTS_RESET=1 to enable.
+if [ "${DOTS_RESET:-0}" = "1" ]; then
+    info "DOTS_RESET=1: clearing install state..."
+    reset_paths=(
+        "$HOME/.config/chezmoi"
+        "$HOME/.local/share/chezmoi"
+        "$HOME/.config/Bitwarden CLI"
+        "$HOME/.local/bin/bw"
+        "$HOME/.local/bin/chezmoi"
+    )
+    for p in "${reset_paths[@]}"; do
+        if [ -e "$p" ]; then
+            info "  rm -rf $p"
+            rm -rf -- "$p"
+        fi
+    done
+fi
+
 # 1. Detect OS
 if ! command_exists apt-get; then
     error "Only Ubuntu/apt-based systems are supported. Detected: $(uname -a)"

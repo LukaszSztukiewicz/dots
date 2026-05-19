@@ -44,6 +44,17 @@ If `BW_CLIENTID`/`BW_CLIENTSECRET` (or `BW_PASSWORD`) are missing **and** no TTY
 available, `install.sh` aborts with an explicit message rather than hanging on a
 prompt nobody can answer.
 
+**Full reproduction / re-bootstrap** — set `DOTS_RESET=1` to wipe install-side
+state (Chezmoi config, cloned source dir, the `bw` binary and its session, the
+local `chezmoi` binary) before running the rest of the script. Useful when
+re-testing the bootstrap on a machine that already has a partial install.
+Dotfiles already applied to `$HOME` are **not** touched — those are managed by
+chezmoi.
+
+```bash
+DOTS_RESET=1 curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | bash
+```
+
 ## Day-to-day workflow
 
 ```bash
