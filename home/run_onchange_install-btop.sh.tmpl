@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Auto-install btop on chezmoi apply. Skipped on server-role machines.
+#
+# This wrapper just execs scripts/install-btop.sh; the inlined hash below
+# makes the rendered template change whenever that script changes, so
+# chezmoi re-runs the install on script edits (not just env-var changes).
+#
+# install-btop.sh hash: {{ include "../scripts/install-btop.sh" | sha256sum }}
+
+machine_role="{{ .machineRole }}"
+if [ "$machine_role" = "server" ]; then
+    echo "[dots] Skipping btop install on server role."
+    exit 0
+fi
+
+exec "$(chezmoi source-path)/../scripts/install-btop.sh"
