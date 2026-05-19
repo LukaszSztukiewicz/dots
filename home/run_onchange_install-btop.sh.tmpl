@@ -3,9 +3,11 @@ set -euo pipefail
 
 # Auto-install btop on chezmoi apply. Skipped on server-role machines.
 #
-# This wrapper just execs scripts/install-btop.sh; the inlined hash below
-# makes the rendered template change whenever that script changes, so
-# chezmoi re-runs the install on script edits (not just env-var changes).
+# Why {{ .chezmoi.sourceDir }} instead of $(chezmoi source-path):
+# the latter spawns a *second* chezmoi process while the parent is
+# still holding the persistent state lock, deadlocks waiting for it,
+# and ultimately returns an empty string. We resolve the path at
+# template-render time so the rendered script holds a literal path.
 #
 # install-btop.sh hash: {{ include "../scripts/install-btop.sh" | sha256sum }}
 
@@ -15,4 +17,4 @@ if [ "$machine_role" = "server" ]; then
     exit 0
 fi
 
-exec "$(chezmoi source-path)/../scripts/install-btop.sh"
+exec "{{ .chezmoi.sourceDir }}/../scripts/install-btop.sh"

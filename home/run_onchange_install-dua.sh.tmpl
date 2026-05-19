@@ -2,6 +2,8 @@
 set -euo pipefail
 
 # Auto-install dua-cli on chezmoi apply. Skipped on server-role machines.
+# See run_onchange_install-btop.sh.tmpl for why we use {{ .chezmoi.sourceDir }}
+# instead of `$(chezmoi source-path)` (nested chezmoi deadlocks on the state lock).
 #
 # install-dua.sh hash: {{ include "../scripts/install-dua.sh" | sha256sum }}
 
@@ -11,4 +13,4 @@ if [ "$machine_role" = "server" ]; then
     exit 0
 fi
 
-exec "$(chezmoi source-path)/../scripts/install-dua.sh"
+exec "{{ .chezmoi.sourceDir }}/../scripts/install-dua.sh"

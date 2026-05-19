@@ -56,7 +56,13 @@ fi
 _have_tty()      { (exec </dev/tty) 2>/dev/null; }
 _bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; }
 
-_bw_session_valid() { [ -n "${BW_SESSION:-}" ] && bw unlock --check >/dev/null 2>&1; }
+_bw_session_valid() {
+    # `bw unlock --check` returns 0 if *any* session is present (env or disk),
+    # not "is BW_SESSION valid". A stale env token passes --check but fails on
+    # real operations like `bw get item`. `bw list folders --raw` actually
+    # decrypts vault data, which exercises the session end-to-end.
+    [ -n "${BW_SESSION:-}" ] && bw list folders --raw >/dev/null 2>&1
+}
 
 _bw_unlock_interactive() {
     if [ -n "${BW_PASSWORD:-}" ]; then
@@ -123,6 +129,13 @@ _bw_ensure_session() {
 }
 
 _bw_ensure_session
+
+# Sanity check: BW_SESSION must be non-empty AND actually work, otherwise
+# chezmoi will fall back to bw's interactive prompt (which mis-decodes
+# passwords under /dev/tty redirection) and fail decrypt on a valid password.
+if ! _bw_session_valid; then
+    error "Bitwarden session unexpectedly invalid after unlock. Re-run install.sh or check BW CLI state with: bw status"
+fi
 
 # 5. Write per-machine chezmoi config (skip if already exists)
 CHEZMOI_CFG="$HOME/.config/chezmoi/chezmoi.toml"

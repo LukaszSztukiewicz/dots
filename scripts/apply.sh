@@ -12,7 +12,10 @@ error() { echo "[dots] ERROR: $*" >&2; exit 1; }
 
 _have_tty() { (exec </dev/tty) 2>/dev/null; }
 
-_bw_session_valid() { [ -n "${BW_SESSION:-}" ] && bw unlock --check >/dev/null 2>&1; }
+_bw_session_valid() {
+    # See install.sh for why we use `list folders` instead of `unlock --check`.
+    [ -n "${BW_SESSION:-}" ] && bw list folders --raw >/dev/null 2>&1
+}
 
 _bw_unlock_interactive() {
     if [ -n "${BW_PASSWORD:-}" ]; then
