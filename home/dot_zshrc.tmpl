@@ -20,10 +20,16 @@ ZSH_THEME=""  # theme handled by powerlevel10k below
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting you-should-use)
 [ -s "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"
 
-# Built-in zsh vi-mode (replaces the heavier zsh-vi-mode plugin we used to
-# pull). Must come AFTER OMZ load so OMZ's default emacs bindings don't
-# clobber it.
-bindkey -v
+# Emacs-mode keybindings (default for OMZ, made explicit here so nothing
+# else flips us into vi-mode).
+bindkey -e
+
+# Ctrl-X Ctrl-E opens the current command line in $EDITOR — useful for
+# editing long pipelines. Zsh ships the widget but doesn't bind it by
+# default; this matches bash's behavior.
+autoload -Uz edit-command-line
+zle -N edit-command-line
+bindkey '^X^E' edit-command-line
 
 # --- powerlevel10k theme ---
 P10K_THEME="$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme"

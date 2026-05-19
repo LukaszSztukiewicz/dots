@@ -150,6 +150,7 @@ _bw_ensure_session() {
 }
 
 _bw_ensure_session
+info "Bitwarden ready (session length: ${#BW_SESSION} chars)."
 
 # 5. Write per-machine chezmoi config (skip if already exists)
 CHEZMOI_CFG="$HOME/.config/chezmoi/chezmoi.toml"
