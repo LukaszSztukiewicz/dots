@@ -23,10 +23,12 @@ clone_if_missing() {
     git clone --depth 1 "$url" "$dest"
 }
 
-mkdir -p "$ZSH_CUSTOM/plugins" "$ZSH_CUSTOM/themes"
-
-# Oh My Zsh framework
+# Oh My Zsh framework — clone FIRST. The OMZ repo ships custom/plugins/ and
+# custom/themes/, so the later plugin/theme clones have valid parent dirs.
 clone_if_missing "$ZSH_DIR" https://github.com/ohmyzsh/ohmyzsh
+
+# Defensive mkdir in case someone deleted only the custom/ subtree.
+mkdir -p "$ZSH_CUSTOM/plugins" "$ZSH_CUSTOM/themes"
 
 # Plugins (the `you-should-use` plugin dir name must match the OMZ plugins=() entry,
 # even though the upstream repo is `zsh-you-should-use`).
