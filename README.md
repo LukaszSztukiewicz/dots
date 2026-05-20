@@ -109,10 +109,11 @@ bw get template item \
 
 Edit `packages.yaml` at the repo root, then run `cap`. The `run_onchange_` script detects the change and re-runs `apt-get install`.
 
-## Optional language toolchains
+## Optional on-demand installs
 
-The shipped `.zshrc` has guarded init blocks for five version managers, so each
-costs ~nothing until you actually install it. Install on demand:
+Install only when needed; each script drops the tool into `~/.local/bin` (or a
+tool-specific dir) without touching `.zshrc` — init blocks in `.zshrc` are
+already there, gated on existence checks.
 
 | Tool | Install command | Purpose |
 |---|---|---|
@@ -121,13 +122,14 @@ costs ~nothing until you actually install it. Install on demand:
 | **juliaup** | `~/dots/scripts/install-juliaup.sh` | Julia version manager |
 | **conda** | `~/dots/scripts/install-conda.sh` | Miniconda into `~/miniconda3` |
 | **sdkman** | `~/dots/scripts/install-sdkman.sh` | JVM toolchain manager (Java/Kotlin/Gradle/...) |
+| **tmux** (static) | `~/dots/scripts/install-tmux.sh` | tmux ≥ 3.3 for OSC52 nested-clipboard passthrough on systems where apt's tmux is too old. No sudo needed; shadows `/usr/bin/tmux` via `~/.local/bin`. |
 
-After running one, open a new shell. None of the scripts modify `.zshrc` — the
-init blocks are already there, gated on `[ -d ~/.<tool> ]`-style checks.
+After running one, open a new shell.
 
 Override versions/paths with env vars:
 - `NVM_VERSION=v0.40.0 ~/dots/scripts/install-nvm.sh`
 - `CONDA_PREFIX_DIR=/opt/miniconda ~/dots/scripts/install-conda.sh`
+- `TMUX_VERSION=3.5a ~/dots/scripts/install-tmux.sh`
 
 ## Per-machine setup (one-time)
 

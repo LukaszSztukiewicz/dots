@@ -3,6 +3,18 @@
     laptop      → minimal: Ctrl-Space prefix, mouse, wheel-passthrough, history, escape-time.
     everything else → full workstation config (default Ctrl-b prefix, splits, status bar).
 */ -}}
+# -- nested-tmux clipboard (OSC52 passthrough) --
+# Lets selection inside a remote tmux land on the *local* clipboard via the
+# host terminal emulator. Requires tmux >= 3.3 on both ends. allow-passthrough
+# is what lets the remote tmux's OSC52 escape sequence travel through the
+# local tmux to the terminal. set-clipboard on + terminal-features ':clipboard'
+# tells tmux to emit OSC52 on copy.
+set -g set-clipboard on
+set -g allow-passthrough on
+set -as terminal-features ',*:clipboard'
+bind -T copy-mode    MouseDragEnd1Pane send-keys -X copy-pipe-no-clear
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-no-clear
+
 {{- if eq .machineRole "laptop" }}
 # -- laptop tmux config --
 #
