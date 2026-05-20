@@ -42,7 +42,7 @@ if [ "$TMUX_VERSION" = "latest" ]; then
     API_URL="https://api.github.com/repos/nelsonenzo/tmux-appimage/releases/latest"
     TAG="latest"
 else
-    TAG="tmux-${TMUX_VERSION}"
+    TAG="${TMUX_VERSION}"
     API_URL="https://api.github.com/repos/nelsonenzo/tmux-appimage/releases/tags/${TAG}"
 fi
 

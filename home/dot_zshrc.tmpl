@@ -23,11 +23,8 @@ ZSH_THEME=""  # theme handled by powerlevel10k below
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting you-should-use)
 [ -s "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"
 
-# Emacs-mode keybindings (default for OMZ, made explicit here so nothing
-# else flips us into vi-mode). Must come BEFORE the compinit + bindkey
-# block below: `bindkey -e` switches the main keymap to emacs and would
-# otherwise stomp any ^I binding set against a different active keymap.
-bindkey -e
+# Vi-mode
+bindkey -v
 
 # Belt-and-braces completion init. OMZ normally calls compinit, but if it
 # fails to load (no .oh-my-zsh dir on a fresh apply, plugin order, plugin
