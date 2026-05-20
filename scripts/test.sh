@@ -6,9 +6,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=lib/colors.sh
 . "$REPO_ROOT/scripts/lib/colors.sh"
 
-info()  { c_info "$*"; }
-
-info "Building smoke-test Docker image..."
+c_info "Building smoke-test Docker image..."
 
 docker build -t dots-smoke-test -f - "$REPO_ROOT" << 'DOCKERFILE'
 FROM ubuntu:24.04
@@ -23,7 +21,7 @@ USER testuser
 WORKDIR /home/testuser
 DOCKERFILE
 
-info "Running smoke test in container..."
+c_info "Running smoke test in container..."
 
 docker run --rm \
     -v "$REPO_ROOT:/dots:ro" \
@@ -88,4 +86,4 @@ echo ""
 echo "All smoke tests passed."
 '
 
-info "Smoke test complete."
+c_info "Smoke test complete."

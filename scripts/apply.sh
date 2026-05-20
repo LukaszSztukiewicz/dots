@@ -10,8 +10,6 @@ set -euo pipefail
 # shellcheck source=lib/colors.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
 
-info()  { c_info "$*"; }
-error() { c_err "$*"; exit 1; }
 
 # Trim trailing/leading whitespace on env-supplied credentials.
 _strip_ws() { printf '%s' "$1" | awk '{$1=$1; print}'; }
@@ -75,19 +73,19 @@ _bw_ensure_session() {
     case "$status" in
         unlocked|locked)
             [ "$status" = "unlocked" ] && bw lock >/dev/null 2>&1 || true
-            info "Unlocking Bitwarden vault..."
+            c_info "Unlocking Bitwarden vault..."
             ;;
         unauthenticated)
             if _bw_have_apikey; then
-                info "Logging in to Bitwarden via API key..."
+                c_info "Logging in to Bitwarden via API key..."
                 bw login --apikey --quiet
             elif _have_tty; then
-                info "Not logged in to Bitwarden. Logging in (interactive)..."
+                c_info "Not logged in to Bitwarden. Logging in (interactive)..."
                 bw login </dev/tty
             else
                 error "Bitwarden login required, but stdin is not a TTY and BW_CLIENTID/BW_CLIENTSECRET are unset."
             fi
-            info "Login complete. Unlocking vault..."
+            c_info "Login complete. Unlocking vault..."
             ;;
         *)
             error "Could not determine Bitwarden status (got: '$status'). Is bw installed?"

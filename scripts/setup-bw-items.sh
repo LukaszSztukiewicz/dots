@@ -15,9 +15,6 @@ set -euo pipefail
 # shellcheck source=lib/colors.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
 
-info()  { c_info "$*"; }
-error() { c_err "$*"; exit 1; }
-
 command -v bw >/dev/null 2>&1 || error "bw (Bitwarden CLI) not found in PATH."
 [ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run bootstrap.sh or \`bw unlock\` first."
 
@@ -34,9 +31,9 @@ bw_probe_err=$(_bw list folders 2>&1 >/dev/null) || \
 
 # --- dots-git-secrets ---
 if _bw get item "dots-git-secrets" >/dev/null 2>&1; then
-    info "dots-git-secrets already exists. Skipping."
+    c_info "dots-git-secrets already exists. Skipping."
 else
-    info "Creating dots-git-secrets in Bitwarden..."
+    c_info "Creating dots-git-secrets in Bitwarden..."
     # Hand-crafted item JSON. type=2 = Secure Note, secureNote.type=0 = Generic.
     # Field type=0 = Text. This is the same shape `bw get template item` would
     # produce, just without the jq round-trip.
@@ -44,5 +41,5 @@ else
     # `bw encode` is local base64 with no vault access, so it doesn't need the
     # session. `bw create item` does.
     printf '%s' "$item_json" | bw encode | _bw create item >/dev/null
-    info "dots-git-secrets created."
+    c_info "dots-git-secrets created."
 fi

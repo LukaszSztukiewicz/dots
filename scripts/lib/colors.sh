@@ -35,3 +35,4 @@ c_info() { printf '%s[dots]%s %s\n' "$_c_blu" "$_c_reset" "$*"; }
 c_ok()   { printf '%s[ ok ]%s %s\n' "$_c_grn" "$_c_reset" "$*"; }
 c_warn() { printf '%s[warn]%s %s\n' "$_c_ylw" "$_c_reset" "$*" >&2; }
 c_err()  { printf '%s[ERR ]%s %s\n' "$_c_red" "$_c_reset" "$*" >&2; }
+error()  { c_err "$*"; exit 1; }

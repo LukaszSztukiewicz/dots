@@ -19,29 +19,23 @@ DOTS_REPO="${DOTS_REPO:-https://github.com/LukaszSztukiewicz/dots}"
 DOTS_RAW="${DOTS_RAW:-https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main}"
 
 # ── Color lib ──────────────────────────────────────────────────────────────
-# Source the shared color lib if the repo is already on disk; otherwise fall
-# back to TTY-aware inline shims so output is colored from line 1.
-_COLORS_LIB="$HOME/.local/share/chezmoi/scripts/lib/colors.sh"
-# shellcheck source=/dev/null
-if [ -r "$_COLORS_LIB" ]; then
-    . "$_COLORS_LIB"
-else
-    if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ -z "${DOTS_NO_COLOR:-}" ]; then
-        _r=$'\033[0m'; _b=$'\033[1m'
-        _rd=$'\033[31m'; _g=$'\033[32m'; _y=$'\033[33m'
-        _bl=$'\033[34m'; _c=$'\033[36m'
-    else
-        _r=; _b=; _rd=; _g=; _y=; _bl=; _c=
-    fi
-    c_step() { printf '%s==>%s %s%s%s\n' "$_c"  "$_r" "$_b" "$*" "$_r"; }
-    c_info() { printf '%s[dots]%s %s\n'  "$_bl" "$_r" "$*"; }
-    c_ok()   { printf '%s[ ok ]%s %s\n'  "$_g"  "$_r" "$*"; }
-    c_warn() { printf '%s[warn]%s %s\n'  "$_y"  "$_r" "$*" >&2; }
-    c_err()  { printf '%s[ERR ]%s %s\n'  "$_rd" "$_r" "$*" >&2; }
-fi
+# Plain stubs — replaced by colors.sh once available (disk or GitHub).
+c_step() { printf '==> %s\n' "$*"; }
+c_info() { printf '[dots] %s\n' "$*"; }
+c_ok()   { printf '[ ok ] %s\n' "$*"; }
+c_warn() { printf '[warn] %s\n' "$*" >&2; }
+c_err()  { printf '[ERR ] %s\n' "$*" >&2; }
+error()  { c_err "$*"; exit 1; }
+# shellcheck source=scripts/lib/colors.sh
+_lib="$HOME/.local/share/chezmoi/scripts/lib/colors.sh"
+{ [ -r "$_lib" ] && . "$_lib"; } || {
+    _tmp=$(mktemp)
+    curl -fsSL "${DOTS_RAW}/scripts/lib/colors.sh" \
+        -o "$_tmp" 2>/dev/null && . "$_tmp"
+    rm -f "$_tmp"
+}
+unset _lib _tmp
 
-info()  { c_info "$*"; }
-error() { c_err "$*"; exit 1; }
 command_exists() { command -v "$1" &>/dev/null; }
 _have_tty()      { (exec </dev/tty) 2>/dev/null; }
 
@@ -58,7 +52,7 @@ elif [ "${DOTS_RESET:-0}" = "1" ]; then
     else
         # Repo isn't on disk yet — inline reset list, must stay in sync with
         # RESET_PATHS in scripts/cleanup.sh.
-        info "DOTS_RESET=1: clearing install state (inline, repo was not cloned)..."
+        c_info "DOTS_RESET=1: clearing install state (inline, repo was not cloned)..."
         reset_paths=(
             "$HOME/.config/chezmoi"
             "$HOME/.local/share/chezmoi"
@@ -68,7 +62,7 @@ elif [ "${DOTS_RESET:-0}" = "1" ]; then
         )
         for p in "${reset_paths[@]}"; do
             if [ -e "$p" ]; then
-                info "  rm -rf $p"
+                c_info "  rm -rf $p"
                 rm -rf -- "$p"
             fi
         done
@@ -95,7 +89,7 @@ _need_bootstrap=()
 command_exists unzip || _need_bootstrap+=(unzip)
 command_exists curl  || _need_bootstrap+=(curl)
 if [ "${#_need_bootstrap[@]}" -gt 0 ]; then
-    info "Installing bootstrap deps: ${_need_bootstrap[*]}"
+    c_info "Installing bootstrap deps: ${_need_bootstrap[*]}"
     export DEBIAN_FRONTEND=noninteractive
     _apt update -qq
     _apt install -y "${_need_bootstrap[@]}"
@@ -103,13 +97,13 @@ fi
 
 # ── Install chezmoi ────────────────────────────────────────────────────────
 if ! command_exists chezmoi; then
-    info "Installing chezmoi..."
+    c_info "Installing chezmoi..."
     sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
 fi
 
 # ── Install Bitwarden CLI ──────────────────────────────────────────────────
 if ! command_exists bw; then
-    info "Installing Bitwarden CLI..."
+    c_info "Installing Bitwarden CLI..."
     bw_version="2026.4.1"
     curl -fsSL "https://github.com/bitwarden/clients/releases/download/cli-v${bw_version}/bw-linux-${bw_version}.zip" \
         -o /tmp/bw.zip
@@ -174,7 +168,7 @@ _bw_unlock_interactive() {
 
 _bw_ensure_session() {
     if _bw_session_valid; then
-        info "Bitwarden session already valid."
+        c_info "Bitwarden session already valid."
         return
     fi
     unset BW_SESSION
@@ -186,24 +180,24 @@ _bw_ensure_session() {
     case "$status" in
         unlocked|locked)
             [ "$status" = "unlocked" ] && bw lock >/dev/null 2>&1 || true
-            info "Unlocking Bitwarden vault..."
+            c_info "Unlocking Bitwarden vault..."
             _bw_unlock_interactive
             ;;
         unauthenticated)
             if _bw_have_apikey; then
-                info "Logging in to Bitwarden via API key..."
+                c_info "Logging in to Bitwarden via API key..."
                 bw login --apikey --quiet
-                info "Login complete. Unlocking vault..."
+                c_info "Login complete. Unlocking vault..."
                 # API key login leaves the vault locked, so we must unlock it now.
                 _bw_unlock_interactive
             elif _have_tty; then
-                info "Not logged in to Bitwarden. Logging in (interactive)..."
+                c_info "Not logged in to Bitwarden. Logging in (interactive)..."
                 # Interactive login authenticates AND unlocks; capture the raw token
                 # directly to skip the redundant unlock step.
                 local login_out
                 if login_out=$(bw login --raw </dev/tty); then
                     export BW_SESSION="$login_out"
-                    info "Login and unlock complete."
+                    c_info "Login and unlock complete."
                 else
                     error "Bitwarden login failed."
                 fi
@@ -219,13 +213,13 @@ _bw_ensure_session() {
 }
 
 _bw_ensure_session
-info "Bitwarden ready."
+c_info "Bitwarden ready."
 
 # ── Per-machine chezmoi config ─────────────────────────────────────────────
 CHEZMOI_CFG="$HOME/.config/chezmoi/chezmoi.toml"
 
 if [ ! -f "$CHEZMOI_CFG" ]; then
-    info "Creating per-machine Chezmoi config..."
+    c_info "Creating per-machine Chezmoi config..."
     mkdir -p "$(dirname "$CHEZMOI_CFG")"
 
     machine_role="${MACHINE_ROLE:-}"
@@ -295,14 +289,14 @@ sourceDir = "$HOME/.local/share/chezmoi/home"
 [bitwarden]
   command = "$HOME/.local/share/chezmoi/scripts/bw-with-session.sh"
 EOF
-    info "Config written to $CHEZMOI_CFG"
+    c_info "Config written to $CHEZMOI_CFG"
 else
-    info "Chezmoi config already exists at $CHEZMOI_CFG — skipping prompts."
+    c_info "Chezmoi config already exists at $CHEZMOI_CFG — skipping prompts."
 fi
 
 # Migrate older configs missing the [bitwarden] wrapper. Idempotent.
 if [ -f "$CHEZMOI_CFG" ] && ! grep -q '^\[bitwarden\]' "$CHEZMOI_CFG"; then
-    info "Adding [bitwarden] wrapper to existing chezmoi.toml..."
+    c_info "Adding [bitwarden] wrapper to existing chezmoi.toml..."
     cat >> "$CHEZMOI_CFG" << EOF
 
 [bitwarden]
@@ -314,32 +308,27 @@ fi
 REPO_PARENT="$HOME/.local/share/chezmoi"
 if [ ! -d "$REPO_PARENT/.git" ]; then
     if ! command_exists git; then
-        info "Installing git (required to clone the dotfiles repo)..."
+        c_info "Installing git (required to clone the dotfiles repo)..."
         export DEBIAN_FRONTEND=noninteractive
         _apt update -qq
         _apt install -y git
     fi
-    info "Cloning $DOTS_REPO into $REPO_PARENT ..."
+    c_info "Cloning $DOTS_REPO into $REPO_PARENT ..."
     mkdir -p "$(dirname "$REPO_PARENT")"
     GIT_TERMINAL_PROMPT=0 git clone "$DOTS_REPO" "$REPO_PARENT" \
         || error "git clone $DOTS_REPO failed. If the repo is private, clone it manually into $REPO_PARENT (e.g. via SSH) and re-run."
 else
-    info "Chezmoi source already present at $REPO_PARENT."
+    c_info "Chezmoi source already present at $REPO_PARENT."
 fi
 
-# Pick up the real color lib now that the repo is on disk.
-if [ "${_DOTS_COLORS_SH:-0}" != "1" ] && [ -r "$REPO_PARENT/scripts/lib/colors.sh" ]; then
-    # shellcheck source=/dev/null
-    . "$REPO_PARENT/scripts/lib/colors.sh"
-fi
 
 # ── Apply dotfiles ─────────────────────────────────────────────────────────
 # dot_gitconfig.tmpl reads `credential_helper` from dots-git-secrets at render
 # time; if the item is missing, chezmoi apply would fail.
-info "Ensuring Bitwarden items exist..."
+c_info "Ensuring Bitwarden items exist..."
 "$REPO_PARENT/scripts/setup-bw-items.sh"
 
-info "Applying dotfiles..."
+c_info "Applying dotfiles..."
 chezmoi apply
 
 # ── Login shell ────────────────────────────────────────────────────────────
@@ -352,14 +341,14 @@ _set_login_shell_zsh() {
     fi
     current_shell="$(getent passwd "$USER" 2>/dev/null | cut -d: -f7 || true)"
     if [ "$current_shell" = "$zsh_path" ]; then
-        info "Login shell already zsh."
+        c_info "Login shell already zsh."
         return
     fi
     if grep -qxF "$zsh_path" /etc/shells 2>/dev/null && chsh -s "$zsh_path" 2>/dev/null; then
-        info "Login shell set to $zsh_path via chsh."
+        c_info "Login shell set to $zsh_path via chsh."
         return
     fi
-    info "chsh unavailable; installing bash -> zsh trampoline in ~/.bash_profile."
+    c_info "chsh unavailable; installing bash -> zsh trampoline in ~/.bash_profile."
     local marker="# dots: exec zsh on interactive bash login"
     if ! grep -qF "$marker" "$HOME/.bash_profile" 2>/dev/null; then
         cat >> "$HOME/.bash_profile" << EOF
@@ -373,4 +362,4 @@ EOF
 }
 _set_login_shell_zsh
 
-info "Done. Run 'cap' to apply future changes."
+c_info "Done. Run 'cap' to apply future changes."
