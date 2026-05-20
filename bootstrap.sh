@@ -209,6 +209,6 @@ info "Bitwarden ready (session length: ${#BW_SESSION} chars)."
 echo
 c_step "Bootstrap complete. Copy and run the two lines below to apply your dotfiles:"
 echo
-printf 'export BW_SESSION=%q\n' "$BW_SESSION"
+printf 'export BW_SESSION="%q"\n' "$BW_SESSION"
 printf 'curl -fsSL %s/install.sh | bash\n' "$DOTS_RAW"
 echo
