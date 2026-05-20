@@ -20,6 +20,16 @@ ZSH_THEME=""  # theme handled by powerlevel10k below
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting you-should-use)
 [ -s "$ZSH/oh-my-zsh.sh" ] && source "$ZSH/oh-my-zsh.sh"
 
+# Belt-and-braces completion init. OMZ normally calls compinit, but if it
+# fails to load (no .oh-my-zsh dir on a fresh apply, plugin order, etc.)
+# TAB silently becomes self-insert — typing a literal tab character instead
+# of completing. Force-init here so completion always works.
+autoload -Uz compinit
+compinit -i
+bindkey '^I' expand-or-complete
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|=*' 'l:|=* r:|=*'
+
 # Emacs-mode keybindings (default for OMZ, made explicit here so nothing
 # else flips us into vi-mode).
 bindkey -e
