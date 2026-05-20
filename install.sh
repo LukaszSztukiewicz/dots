@@ -68,11 +68,17 @@ command_exists bw      || error "bw not found in PATH. Run bootstrap.sh first: c
 command_exists chezmoi || error "chezmoi not found in PATH. Run bootstrap.sh first."
 [ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run bootstrap.sh first; it prints the export line."
 
-# Verify the session actually works against the vault (stale tokens pass
-# bw's --check but fail on real operations).
-if ! bw --nointeraction --session "$BW_SESSION" list folders >/dev/null 2>&1; then
-    error "BW_SESSION is set but the vault is not accessible. Re-run bootstrap.sh to refresh the session."
+# Verify the session actually works against the vault. Capture bw's stderr
+# so we can show it on failure — stale tokens, locked vault, and missing
+# vault cache all produce distinct messages and the user shouldn't have to
+# guess which one.
+_bw_out=$(bw --nointeraction --session "$BW_SESSION" list folders 2>&1 >/dev/null) && _bw_rc=0 || _bw_rc=$?
+if [ "$_bw_rc" -ne 0 ]; then
+    c_err "BW_SESSION is set but bw rejected it (exit $_bw_rc):"
+    c_err "    ${_bw_out:-<no stderr from bw>}"
+    error "Re-run bootstrap.sh to refresh the session: curl -fsSL ${DOTS_RAW}/bootstrap.sh | bash"
 fi
+unset _bw_out _bw_rc
 info "Bitwarden session valid."
 
 # 2. Write per-machine chezmoi config (skip if already exists).
