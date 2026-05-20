@@ -6,67 +6,83 @@ Personal dotfiles managed with [Chezmoi](https://chezmoi.io) + Bitwarden.
 
 - Ubuntu 22.04+
 - A Bitwarden account with a `dots-git-secrets` item (see Secrets below)
-- Bitwarden CLI and Chezmoi are installed automatically by `install.sh`
+- Bitwarden CLI and Chezmoi are installed automatically by `bootstrap.sh`
 
 ## First-time setup on a new machine
 
+The install is split into two stages. Stage 1 (`bootstrap.sh`) installs the
+Bitwarden + Chezmoi binaries and unlocks your vault, then **prints two lines
+for you to paste**. Stage 2 (`install.sh`) takes the printed `BW_SESSION`,
+asks for the per-machine config, clones the repo, and applies the dotfiles.
+
 ```bash
+# stage 1 — auth
+curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/bootstrap.sh | bash
+```
+
+bootstrap.sh ends with something like:
+
+```
+==> Bootstrap complete. Copy and run the two lines below to apply your dotfiles:
+
+export BW_SESSION='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=='
 curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | bash
 ```
 
-Or clone and run locally:
+Paste both lines into the shell. Stage 2 will prompt for `MACHINE_ROLE`, git
+name/email, and proxy, then clone + apply.
+
+If you've already cloned the repo (`git clone ...`), you can run them
+locally instead:
+
 ```bash
-git clone https://github.com/LukaszSztukiewicz/dots ~/dots
+~/dots/bootstrap.sh    # prints export + curl
+# paste both lines OR:
+export BW_SESSION='...'
 ~/dots/install.sh
 ```
-
-The `curl | bash` form is supported: interactive prompts (Bitwarden login/unlock,
-Chezmoi config questions) are read from `/dev/tty`, so they still work even though
-the script itself was piped from `curl`.
 
 **Headless mode** (servers / cloud-init / CI — no TTY at all):
 
-Set every value the script would otherwise prompt for via env vars. Bitwarden
-needs an [API key](https://bitwarden.com/help/personal-api-key/) for login and
-the master password for unlock; the rest seed the per-machine Chezmoi config.
+Set every value the scripts would otherwise prompt for via env vars.
+Bitwarden needs an [API key](https://bitwarden.com/help/personal-api-key/)
+for login and the master password for unlock; the rest seed the per-machine
+Chezmoi config. Chain the two stages with `eval` to import `BW_SESSION`:
 
 ```bash
-MACHINE_ROLE=remote \
-GIT_NAME="Lukasz Sztukiewicz" \
-GIT_EMAIL="ops@example.com" \
-BW_CLIENTID="user.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
-BW_CLIENTSECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
-BW_PASSWORD="<vault master password>" \
-~/dots/install.sh
+export BW_CLIENTID="user.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export BW_CLIENTSECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+export BW_PASSWORD="<vault master password>"
+export MACHINE_ROLE=remote
+export GIT_NAME="Lukasz Sztukiewicz"
+export GIT_EMAIL="ops@example.com"
+
+eval "$(curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/bootstrap.sh | bash | grep '^export BW_SESSION=')"
+curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | bash
 ```
 
-If `BW_CLIENTID`/`BW_CLIENTSECRET` (or `BW_PASSWORD`) are missing **and** no TTY is
-available, `install.sh` aborts with an explicit message rather than hanging on a
-prompt nobody can answer.
+If `BW_CLIENTID`/`BW_CLIENTSECRET` (or `BW_PASSWORD`) are missing **and** no
+TTY is available, `bootstrap.sh` aborts with an explicit message rather
+than hanging.
 
-**Full reproduction / re-bootstrap** — set `DOTS_RESET=1` to wipe install-side
-state (Chezmoi config, cloned source dir, the `bw` binary and its session, the
-local `chezmoi` binary) before running the rest of the script. Useful when
-re-testing the bootstrap on a machine that already has a partial install.
-Dotfiles already applied to `$HOME` are **not** touched — those are managed by
-chezmoi.
+**Full reproduction / re-bootstrap** — set `DOTS_RESET=1` on `bootstrap.sh`
+to wipe install-side state (Chezmoi config, cloned source dir, `bw` binary
+and session, local `chezmoi` binary) before continuing. Applied dotfiles
+in `$HOME` are not touched.
 
-**Decommission / security wipe** — set `DOTS_NUKE=1` to additionally remove
-applied dotfiles, Oh My Zsh, fzf, language toolchains (uv/nvm/conda/juliaup/sdkman),
-the p10k cache, shell history, and the bash→zsh trampoline (see below). Prompts
-for a typed `NUKE` confirmation unless `DOTS_NUKE_FORCE=1` is also set. Both
-modes shell out to `scripts/cleanup.sh`, which can also be invoked directly:
-`~/dots/scripts/cleanup.sh --nuke [--force]`.
+**Decommission / security wipe** — set `DOTS_NUKE=1` on `bootstrap.sh` to
+additionally remove applied dotfiles, Oh My Zsh, fzf, language toolchains,
+the p10k cache, shell history, and the bash→zsh trampoline. Prompts for a
+typed `NUKE` confirmation unless `DOTS_NUKE_FORCE=1` is also set. Both
+modes shell out to `scripts/cleanup.sh`, which can also be invoked
+directly: `~/dots/scripts/cleanup.sh --nuke [--force]`.
 
 The env var has to apply to `bash` (not to `curl`), so put it on the right
 side of the pipe:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | DOTS_RESET=1 bash
+curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/bootstrap.sh | DOTS_RESET=1 bash
 ```
-
-The same applies to any other env var (`MACHINE_ROLE`, `GIT_NAME`,
-`BW_CLIENTID`, …) when using the `curl | bash` form.
 
 ## Day-to-day workflow
 
