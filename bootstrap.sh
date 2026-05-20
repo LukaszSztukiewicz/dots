@@ -54,7 +54,7 @@ elif [ "${DOTS_RESET:-0}" = "1" ]; then
     else
         # Repo isn't on disk yet — inline reset list, must stay in sync with
         # RESET_PATHS in scripts/cleanup.sh.
-        info "DOTS_RESET=1: clearing install state (inline, repo not yet cloned)..."
+        info "DOTS_RESET=1: clearing install state (inline, repo was notcloned)..."
         reset_paths=(
             "$HOME/.config/chezmoi"
             "$HOME/.local/share/chezmoi"

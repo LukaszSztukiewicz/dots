@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install
 Paste both lines into the shell. Stage 2 will prompt for `MACHINE_ROLE`, git
 name/email, and proxy, then clone + apply.
 
-If you've already cloned the repo (`git clone ...`), you can run them
+If you've already cloned the repo (`git clone https://github.com/LukaszSztukiewicz/dots.git`), you can run them
 locally instead:
 
 ```bash

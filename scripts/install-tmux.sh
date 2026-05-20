@@ -14,21 +14,10 @@ set -euo pipefail
 }
 
 # Install a static tmux binary into ~/.local/bin/tmux so OSC52 clipboard
-# passthrough (allow-passthrough, set-clipboard, terminal-features :clipboard)
-# works on systems where the apt-shipped tmux is too old. Ubuntu 22.04 ships
-# 3.2a; OSC52 passthrough needs >= 3.3.
+# passthrough works on systems where the apt-shipped tmux is too old.
 #
-# No sudo required — drops the binary in $HOME/.local/bin, which dot_zshrc.tmpl
-# already prepends to PATH so it shadows /usr/bin/tmux. Re-runnable.
-#
-# Source: nelsonenzo/tmux-appimage releases. AppImages are self-extracting,
-# self-contained ELF binaries — no FUSE / loop mount required at runtime when
-# invoked with --appimage-extract-and-run, but we instead extract once and
-# install the inner static `tmux` so day-to-day tmux invocations don't pay
-# the extract cost.
-#
-# Override the version via TMUX_VERSION env var. The release tag format is
-# `tmux-<version>` (e.g. tmux-3.5a -> tag tmux-3.5a, asset tmux-3.5a-appimage).
+# Override the version via TMUX_VERSION env var. If the specified version
+# fails, you can run: TMUX_VERSION="latest" ./install-tmux.sh
 
 TMUX_VERSION="${TMUX_VERSION:-3.5a}"
 DEST_BIN="$HOME/.local/bin/tmux"
@@ -45,20 +34,49 @@ esac
 
 mkdir -p "$HOME/.local/bin"
 
-asset="tmux-${TMUX_VERSION}-x86_64.appimage"
-url="https://github.com/nelsonenzo/tmux-appimage/releases/download/tmux-${TMUX_VERSION}/${asset}"
-
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-c_step "Downloading static tmux ${TMUX_VERSION}..."
-curl -fsSL "$url" -o "$TMP/$asset" \
-    || { c_err "Download failed. Check https://github.com/nelsonenzo/tmux-appimage/releases for available versions."; exit 1; }
+# 1. Dynamically resolve the URL using the GitHub API
+if [ "$TMUX_VERSION" = "latest" ]; then
+    API_URL="https://api.github.com/repos/nelsonenzo/tmux-appimage/releases/latest"
+    TAG="latest"
+else
+    TAG="tmux-${TMUX_VERSION}"
+    API_URL="https://api.github.com/repos/nelsonenzo/tmux-appimage/releases/tags/${TAG}"
+fi
+
+c_step "Resolving download URL for ${TAG}..."
+
+# Fetch API response and capture the HTTP status code
+HTTP_CODE=$(curl -sL -w "%{http_code}" "$API_URL" -o "$TMP/api.json")
+
+if [ "$HTTP_CODE" != "200" ]; then
+    c_err "GitHub API returned HTTP ${HTTP_CODE} for tag '${TAG}'."
+    c_err "Version ${TMUX_VERSION} might not be released yet, or the tag name changed."
+    c_info "Try running with the latest release: TMUX_VERSION=latest $0"
+    exit 1
+fi
+
+# Extract the download URL avoiding jq dependency (useful for bootstrapping)
+url=$(grep -o '"browser_download_url": *"[^"]*"' "$TMP/api.json" | grep -i 'appimage' | cut -d '"' -f 4 | head -n 1)
+
+if [ -z "$url" ]; then
+    c_err "Found the release, but could not find an AppImage asset inside it."
+    exit 1
+fi
+
+asset=$(basename "$url")
+
+# 2. Download and Extract
+c_step "Downloading $asset..."
+curl -fsSL "$url" -o "$TMP/$asset" || {
+    c_err "Download failed."
+    exit 1
+}
 
 chmod +x "$TMP/$asset"
 
-# AppImage --appimage-extract requires FUSE-less mode of execution. The
-# binaries are squashfs-packed; extraction unpacks into ./squashfs-root.
 c_info "Extracting appimage..."
 (cd "$TMP" && "./$asset" --appimage-extract >/dev/null)
 
