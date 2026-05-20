@@ -1,7 +1,8 @@
 {{- /*
   tmux config split by machineRole.
-    laptop      → minimal: Ctrl-Space prefix, mouse, wheel-passthrough, history, escape-time.
-    everything else → full workstation config (default Ctrl-b prefix, splits, status bar).
+    local       → minimal: Ctrl-Space prefix, mouse, wheel-passthrough, history, escape-time,
+                  cyan status bar accent matching the p10k role-accent override.
+    remote/agent → full workstation config (default Ctrl-b prefix, splits, amber status bar).
 */ -}}
 # -- nested-tmux clipboard (OSC52 passthrough) --
 # Lets selection inside a remote tmux land on the *local* clipboard via the
@@ -15,8 +16,8 @@ set -as terminal-features ',*:clipboard'
 bind -T copy-mode    MouseDragEnd1Pane send-keys -X copy-pipe-no-clear
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-no-clear
 
-{{- if eq .machineRole "laptop" }}
-# -- laptop tmux config --
+{{- if eq .machineRole "local" }}
+# -- local tmux config --
 #
 # Note: changes here only affect *new* tmux sessions. To pick up edits in a
 # running server: `prefix r` (reloads in place), or `tmux kill-server` for a

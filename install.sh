@@ -243,10 +243,14 @@ if [ ! -f "$CHEZMOI_CFG" ]; then
 
     if [ -z "$machine_role" ]; then
         if _have_tty; then
-            read -rp "Machine role (workstation/server/laptop) [workstation]: " machine_role </dev/tty
+            read -rp "Machine role (remote/local/agent) [remote]: " machine_role </dev/tty
         fi
-        machine_role="${machine_role:-workstation}"
+        machine_role="${machine_role:-remote}"
     fi
+    case "$machine_role" in
+        remote|local|agent) ;;
+        *) error "Invalid machine role '$machine_role'. Use remote, local, or agent." ;;
+    esac
 
     if [ -z "$git_name" ]; then
         if _have_tty; then

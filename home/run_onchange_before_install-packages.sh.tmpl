@@ -1,8 +1,5 @@
 {{- $pkgs := include "../packages.yaml" | fromYaml -}}
 {{- $all := $pkgs.packages -}}
-{{- if ne .machineRole "server" -}}
-{{-   $all = concat $all $pkgs.workstation_only -}}
-{{- end -}}
 #!/usr/bin/env bash
 set -euo pipefail
 

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Auto-install Neovim on chezmoi apply. install-nvim.sh needs root
+# (writes /opt and symlinks /usr/local/bin); on hosts without sudo it
+# errors loudly. If you're on such a host and don't want nvim, delete this
+# file from the source dir.
+#
+# See run_onchange_install-btop.sh.tmpl in git history for why we resolve
+# the source dir at template render time instead of via `chezmoi source-path`.
+#
+# install-nvim.sh hash: {{ include "../scripts/install-nvim.sh" | sha256sum }}
+
+# shellcheck source=/dev/null
+. "{{ .chezmoi.sourceDir }}/../scripts/lib/colors.sh"
+
+exec "{{ .chezmoi.sourceDir }}/../scripts/install-nvim.sh"

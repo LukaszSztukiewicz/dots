@@ -14,16 +14,14 @@ packages:
   - name: vim
     ubuntu: vim
   # neovim: install via scripts/install-nvim.sh (apt nvim is too old for LazyVim).
+  # Auto-runs via home/run_onchange_install-nvim.sh.tmpl on every role.
   - name: ripgrep
     ubuntu: ripgrep
   # fzf: install via scripts/install-fzf.sh (upstream installer; apt's
   # packaging on minimal images is missing examples/key-bindings.zsh).
   - name: fd-find
     ubuntu: fd-find
-  - name: python3
-    ubuntu: python3
-
-workstation_only:
   - name: jq
     ubuntu: jq
-  # btop: install via scripts/install-btop.sh (not in older Ubuntu / Debian apt).
+# btop: NOT auto-installed on apply anymore — run scripts/install-btop.sh
+# manually if you want it.

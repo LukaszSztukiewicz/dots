@@ -1,4 +1,4 @@
-{{- $machineRole := promptStringOnce . "machineRole" "Machine role (workstation/server/laptop)" -}}
+{{- $machineRole := promptStringOnce . "machineRole" "Machine role (remote/local/agent)" -}}
 {{- $gitName := promptStringOnce . "gitName" "Git full name" -}}
 {{- $gitEmail := promptStringOnce . "gitEmail" "Git email" -}}
 {{- $proxy := promptStringOnce . "proxy" "HTTP proxy (leave blank if none)" -}}

@@ -10,10 +10,4 @@ set -euo pipefail
 # shellcheck source=/dev/null
 . "{{ .chezmoi.sourceDir }}/../scripts/lib/colors.sh"
 
-machine_role="{{ .machineRole }}"
-if [ "$machine_role" = "server" ]; then
-    c_info "Skipping dua-cli install on server role."
-    exit 0
-fi
-
 exec "{{ .chezmoi.sourceDir }}/../scripts/install-dua.sh"

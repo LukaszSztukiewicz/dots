@@ -31,7 +31,7 @@ needs an [API key](https://bitwarden.com/help/personal-api-key/) for login and
 the master password for unlock; the rest seed the per-machine Chezmoi config.
 
 ```bash
-MACHINE_ROLE=server \
+MACHINE_ROLE=remote \
 GIT_NAME="Lukasz Sztukiewicz" \
 GIT_EMAIL="ops@example.com" \
 BW_CLIENTID="user.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
@@ -137,10 +137,20 @@ After the first `chezmoi apply` on a new machine:
 
 - **Powerlevel10k prompt** — `~/.p10k.zsh` is tracked by chezmoi
   (`home/dot_p10k.zsh.tmpl`). It contains a Chezmoi-templated role-accent
-  override at the very end (laptop = cyan context segment, workstation =
-  default amber). If you re-run `p10k configure` and want to keep your tweaks,
-  copy the regenerated file back into the source dir and re-add the role
-  block.
+  override at the very end (`local` = cyan context segment, `remote` /
+  `agent` = default amber). If you re-run `p10k configure` and want to keep
+  your tweaks, copy the regenerated file back into the source dir and re-add
+  the role block.
+
+### Machine roles
+
+`MACHINE_ROLE` (env var or `.chezmoi.toml`) is one of:
+
+| Role | Meaning |
+|---|---|
+| `remote` | Default. Full install — your workstation/dev box. Amber p10k accent. |
+| `local`  | Same install as remote, plus a cyan p10k/tmux accent so you can tell it apart at a glance. Use for laptops or anywhere you want the visual distinction. |
+| `agent`  | Same install as remote. Label is metadata only — useful as a "this is a Claude-Code/CI sandbox" marker. |
 - **sudoedit honors $EDITOR** — add `Defaults env_editor` via `sudo visudo` if
   you want `sudoedit` to follow the `EDITOR=vim` env var instead of the
   alternatives default.

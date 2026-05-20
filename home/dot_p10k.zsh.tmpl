@@ -1017,11 +1017,11 @@ typeset -g POWERLEVEL9K_CONFIG_FILE=${${(%):-%x}:a}
 'builtin' 'unset' 'p10k_config_opts'
 
 # --- dots: machineRole accent ---------------------------------------------
-# Tint the context segment by machineRole so workstation and laptop are
-# distinguishable at a glance. The context segment is hidden by default for
-# non-root local sessions; the CONTENT_EXPANSION line forces it visible so
-# the color actually shows up locally too.
-{{- if eq .machineRole "laptop" }}
+# Tint the context segment for the `local` role so it stands out from
+# `remote` / `agent` at a glance. The context segment is hidden by default
+# for non-root local sessions; the CONTENT_EXPANSION line forces it visible
+# so the color actually shows up locally too.
+{{- if eq .machineRole "local" }}
 typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_FOREGROUND=39
 typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION='%n@%m'
 {{- end }}
