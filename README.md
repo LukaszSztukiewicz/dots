@@ -133,8 +133,12 @@ Override versions/paths with env vars:
 
 After the first `chezmoi apply` on a new machine:
 
-- **Powerlevel10k prompt** — run `p10k configure` once. The config is saved to
-  `~/.p10k.zsh` and is not tracked by chezmoi (it's machine-specific).
+- **Powerlevel10k prompt** — `~/.p10k.zsh` is tracked by chezmoi
+  (`home/dot_p10k.zsh.tmpl`). It contains a Chezmoi-templated role-accent
+  override at the very end (laptop = cyan context segment, workstation =
+  default amber). If you re-run `p10k configure` and want to keep your tweaks,
+  copy the regenerated file back into the source dir and re-add the role
+  block.
 - **sudoedit honors $EDITOR** — add `Defaults env_editor` via `sudo visudo` if
   you want `sudoedit` to follow the `EDITOR=vim` env var instead of the
   alternatives default.
