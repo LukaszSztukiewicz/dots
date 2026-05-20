@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Modes:
 #   --reset    Remove install-side state (chezmoi config + source dir, bw
-#              and chezmoi binaries, bw vault data). Re-running install.sh
+#              and chezmoi binaries, bw vault data). Re-running bootstrap.sh
 #              after this re-bootstraps cleanly. Applied dotfiles in $HOME
 #              are untouched.
 #
@@ -160,7 +160,7 @@ remove_globs() {
     done
 }
 
-# Surgically strip the bash trampoline marker block added by install.sh
+# Surgically strip the bash trampoline marker block added by bootstrap.sh
 # (item 3). Leaves the rest of ~/.bash_profile alone.
 strip_bash_trampoline() {
     local bp="$HOME/.bash_profile"

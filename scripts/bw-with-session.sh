@@ -8,7 +8,7 @@
 # vault.
 #
 # Configured via `bitwarden.command` in ~/.config/chezmoi/chezmoi.toml
-# (set by install.sh). Re-applying chezmoi without BW_SESSION set will
+# (set by bootstrap.sh). Re-applying chezmoi without BW_SESSION set will
 # now fail loudly here instead of mid-prompt.
 set -euo pipefail
 # No color lib here on purpose — this wrapper is called by chezmoi during

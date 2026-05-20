@@ -10,44 +10,23 @@ Personal dotfiles managed with [Chezmoi](https://chezmoi.io) + Bitwarden.
 
 ## First-time setup on a new machine
 
-The install is split into two stages. Stage 1 (`bootstrap.sh`) installs the
-Bitwarden + Chezmoi binaries and unlocks your vault, then **prints two lines
-for you to paste**. Stage 2 (`install.sh`) takes the printed `BW_SESSION`,
-asks for the per-machine config, clones the repo, and applies the dotfiles.
-
 ```bash
-# stage 1 — auth
 curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/bootstrap.sh | bash
 ```
 
-bootstrap.sh ends with something like:
-
-```
-==> Bootstrap complete. Copy and run the two lines below to apply your dotfiles:
-
-export BW_SESSION='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=='
-curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | bash
-```
-
-Paste both lines into the shell. Stage 2 will prompt for `MACHINE_ROLE`, git
-name/email, and proxy, then clone + apply.
-
-If you've already cloned the repo (`git clone https://github.com/LukaszSztukiewicz/dots.git`), you can run them
-locally instead:
+The script installs `bw` + `chezmoi`, authenticates with Bitwarden, prompts
+for `MACHINE_ROLE`, git name/email, and proxy, then clones and applies the
+dotfiles. If you've already cloned the repo you can run it locally:
 
 ```bash
-~/dots/bootstrap.sh    # prints export + curl
-# paste both lines OR:
-export BW_SESSION='...'
-~/dots/install.sh
+~/dots/bootstrap.sh
 ```
 
 **Headless mode** (servers / cloud-init / CI — no TTY at all):
 
-Set every value the scripts would otherwise prompt for via env vars.
+Set every value the script would otherwise prompt for via env vars.
 Bitwarden needs an [API key](https://bitwarden.com/help/personal-api-key/)
-for login and the master password for unlock; the rest seed the per-machine
-Chezmoi config. Chain the two stages with `eval` to import `BW_SESSION`:
+for login and the master password for unlock:
 
 ```bash
 export BW_CLIENTID="user.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -57,13 +36,20 @@ export MACHINE_ROLE=remote
 export GIT_NAME="Lukasz Sztukiewicz"
 export GIT_EMAIL="ops@example.com"
 
-eval "$(curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/bootstrap.sh | bash | grep '^export BW_SESSION=')"
-curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/bootstrap.sh | bash
 ```
 
 If `BW_CLIENTID`/`BW_CLIENTSECRET` (or `BW_PASSWORD`) are missing **and** no
 TTY is available, `bootstrap.sh` aborts with an explicit message rather
 than hanging.
+
+**Re-run without re-authing** — if you already have a valid session, export it
+before running and the Bitwarden auth step is skipped:
+
+```bash
+export BW_SESSION='...'
+~/dots/bootstrap.sh
+```
 
 **Full reproduction / re-bootstrap** — set `DOTS_RESET=1` on `bootstrap.sh`
 to wipe install-side state (Chezmoi config, cloned source dir, `bw` binary
@@ -96,7 +82,7 @@ cdots && git add -A && git commit -m "..." && git push
 
 ## Secrets (Bitwarden)
 
-Create the following Bitwarden items before running `install.sh`:
+Create the following Bitwarden items before running `bootstrap.sh`:
 
 | Item name | Custom fields |
 |---|---|
@@ -109,7 +95,7 @@ To add more secrets, create a new Bitwarden item and fetch in a template:
 ```
 
 ```bash
-# session is still set from your last install.sh run; export it again if needed
+# session is still set from your last bootstrap.sh run; export it again if needed
 apt-get install -y jq
 
 bw get template item \
@@ -188,7 +174,7 @@ After the first `chezmoi apply` on a new machine:
 home/           Chezmoi source directory — applied to $HOME
 packages.yaml   Package list (consumed at Chezmoi render time, not by shell)
 scripts/        Helper scripts — never written to $HOME
-install.sh      One-shot bootstrap for a new machine
+bootstrap.sh    One-shot bootstrap for a new machine
 ```
 
 ## Troubleshooting

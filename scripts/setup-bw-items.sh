@@ -10,7 +10,7 @@ set -euo pipefail
 #
 # Run manually after `bw login` + `bw unlock` (or with a valid BW_SESSION set).
 # No jq required — we construct the item JSON inline so this is safe to call
-# from install.sh before chezmoi has installed packages.
+# from bootstrap.sh before chezmoi has installed packages.
 
 # shellcheck source=lib/colors.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
@@ -19,7 +19,7 @@ info()  { c_info "$*"; }
 error() { c_err "$*"; exit 1; }
 
 command -v bw >/dev/null 2>&1 || error "bw (Bitwarden CLI) not found in PATH."
-[ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run install.sh or \`bw unlock\` first."
+[ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run bootstrap.sh or \`bw unlock\` first."
 
 # bw helper: always pass the session explicitly and disable interactive
 # prompts. bw 2026.x (Rust CLI) was observed to ignore BW_SESSION env in

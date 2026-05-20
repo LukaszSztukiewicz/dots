@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# bootstrap.sh — stage 1 of the dots install.
+# bootstrap.sh — one-shot dotfiles install.
 #
-# Installs the bw + chezmoi binaries, logs in to Bitwarden, unlocks the vault,
-# and prints the BW_SESSION export plus the curl|bash line for install.sh.
-# Copy and run those two lines to continue with stage 2 (config prompts,
-# clone, apply, login-shell setup).
+# Installs bw + chezmoi, authenticates with Bitwarden, writes the per-machine
+# chezmoi config, clones the dotfiles repo, applies it, and sets zsh as the
+# login shell.
 #
-# Why a split: lets you inspect the session, edit env vars, or re-run stage 2
-# without re-authing every time. The single-shot install.sh is now stage 2 —
-# it expects BW_SESSION already in env.
+# Quick start:
+#   curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/bootstrap.sh | bash
+#
+# Headless (no TTY — servers/CI): set BW_CLIENTID, BW_CLIENTSECRET,
+#   BW_PASSWORD, MACHINE_ROLE, GIT_NAME, GIT_EMAIL, then pipe to bash.
+#
+# Re-run without re-authing: export BW_SESSION='...' before running.
 
 DOTS_REPO="${DOTS_REPO:-https://github.com/LukaszSztukiewicz/dots}"
 DOTS_RAW="${DOTS_RAW:-https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main}"
 
+# ── Color lib ──────────────────────────────────────────────────────────────
 # Source the shared color lib if the repo is already on disk; otherwise fall
-# back to TTY-aware inline shims so bootstrap output is colored from line 1.
+# back to TTY-aware inline shims so output is colored from line 1.
 _COLORS_LIB="$HOME/.local/share/chezmoi/scripts/lib/colors.sh"
 # shellcheck source=/dev/null
 if [ -r "$_COLORS_LIB" ]; then
@@ -39,9 +43,9 @@ fi
 info()  { c_info "$*"; }
 error() { c_err "$*"; exit 1; }
 command_exists() { command -v "$1" &>/dev/null; }
+_have_tty()      { (exec </dev/tty) 2>/dev/null; }
 
-# 0. Optional cleanup. Lives in bootstrap (not install.sh) because cleanup
-#    blows away the bw session that install.sh would otherwise validate.
+# ── Optional cleanup ───────────────────────────────────────────────────────
 _CLEANUP_SCRIPT="$HOME/.local/share/chezmoi/scripts/cleanup.sh"
 if [ "${DOTS_NUKE:-0}" = "1" ]; then
     if [ ! -x "$_CLEANUP_SCRIPT" ]; then
@@ -54,7 +58,7 @@ elif [ "${DOTS_RESET:-0}" = "1" ]; then
     else
         # Repo isn't on disk yet — inline reset list, must stay in sync with
         # RESET_PATHS in scripts/cleanup.sh.
-        info "DOTS_RESET=1: clearing install state (inline, repo was notcloned)..."
+        info "DOTS_RESET=1: clearing install state (inline, repo was not cloned)..."
         reset_paths=(
             "$HOME/.config/chezmoi"
             "$HOME/.local/share/chezmoi"
@@ -71,12 +75,11 @@ elif [ "${DOTS_RESET:-0}" = "1" ]; then
     fi
 fi
 
-# 1. Detect OS.
+# ── OS check ───────────────────────────────────────────────────────────────
 if ! command_exists apt-get; then
     error "Only Ubuntu/apt-based systems are supported. Detected: $(uname -a)"
 fi
 
-# 1a. apt-get wrapper that picks sudo only when needed.
 _apt() {
     if [ "$(id -u)" -eq 0 ]; then
         apt-get "$@"
@@ -87,7 +90,7 @@ _apt() {
     fi
 }
 
-# 1b. Bootstrap dependencies bootstrap.sh itself needs.
+# ── Bootstrap deps ─────────────────────────────────────────────────────────
 _need_bootstrap=()
 command_exists unzip || _need_bootstrap+=(unzip)
 command_exists curl  || _need_bootstrap+=(curl)
@@ -98,14 +101,13 @@ if [ "${#_need_bootstrap[@]}" -gt 0 ]; then
     _apt install -y "${_need_bootstrap[@]}"
 fi
 
-# 2. Install chezmoi.
+# ── Install chezmoi ────────────────────────────────────────────────────────
 if ! command_exists chezmoi; then
     info "Installing chezmoi..."
     sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-    export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 3. Install Bitwarden CLI.
+# ── Install Bitwarden CLI ──────────────────────────────────────────────────
 if ! command_exists bw; then
     info "Installing Bitwarden CLI..."
     bw_version="2026.4.1"
@@ -114,17 +116,20 @@ if ! command_exists bw; then
     unzip -q /tmp/bw.zip -d /tmp/bw-bin
     install -m 755 /tmp/bw-bin/bw "$HOME/.local/bin/bw"
     rm -rf /tmp/bw.zip /tmp/bw-bin
-    export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 4. Bitwarden auth — interactive via /dev/tty, or headless via
-#    BW_CLIENTID/BW_CLIENTSECRET (+ BW_PASSWORD) env vars.
+# Ensure ~/.local/bin is in PATH (chezmoi/bw may have just been installed there).
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
+# ── Bitwarden auth ─────────────────────────────────────────────────────────
 _strip_ws() { printf '%s' "$1" | awk '{$1=$1; print}'; }
 [ -n "${BW_CLIENTID:-}"     ] && BW_CLIENTID="$(_strip_ws "$BW_CLIENTID")"         && export BW_CLIENTID
 [ -n "${BW_CLIENTSECRET:-}" ] && BW_CLIENTSECRET="$(_strip_ws "$BW_CLIENTSECRET")" && export BW_CLIENTSECRET
 [ -n "${BW_PASSWORD:-}"     ] && BW_PASSWORD="$(_strip_ws "$BW_PASSWORD")"         && export BW_PASSWORD
 
-_have_tty()      { (exec </dev/tty) 2>/dev/null; }
 _bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; }
 _bw_status() {
     bw status 2>/dev/null | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || true
@@ -180,7 +185,7 @@ _bw_ensure_session() {
 
     case "$status" in
         unlocked|locked)
-            [ "$status" = "unlocked" ] && bw lock>/dev/null 2>&1 || true
+            [ "$status" = "unlocked" ] && bw lock >/dev/null 2>&1 || true
             info "Unlocking Bitwarden vault..."
             _bw_unlock_interactive
             ;;
@@ -189,11 +194,11 @@ _bw_ensure_session() {
                 info "Logging in to Bitwarden via API key..."
                 bw login --apikey --quiet
                 info "Login complete. Unlocking vault..."
-                # API key login leaves the vault locked, so we must unlock it now
+                # API key login leaves the vault locked, so we must unlock it now.
                 _bw_unlock_interactive
             elif _have_tty; then
                 info "Not logged in to Bitwarden. Logging in (interactive)..."
-                # Interactive login authenticates AND unlocks. We capture the raw token
+                # Interactive login authenticates AND unlocks; capture the raw token
                 # directly to skip the redundant unlock step.
                 local login_out
                 if login_out=$(bw login --raw </dev/tty); then
@@ -214,11 +219,158 @@ _bw_ensure_session() {
 }
 
 _bw_ensure_session
+info "Bitwarden ready."
 
-info "Bitwarden ready (session length: ${#BW_SESSION} chars)."
-echo
-c_step "Bootstrap complete. Copy and run the two lines below to apply your dotfiles:"
-echo
-printf 'export BW_SESSION="%q"\n' "$BW_SESSION"
-printf 'curl -fsSL %s/install.sh | bash\n' "$DOTS_RAW"
-echo
+# ── Per-machine chezmoi config ─────────────────────────────────────────────
+CHEZMOI_CFG="$HOME/.config/chezmoi/chezmoi.toml"
+
+if [ ! -f "$CHEZMOI_CFG" ]; then
+    info "Creating per-machine Chezmoi config..."
+    mkdir -p "$(dirname "$CHEZMOI_CFG")"
+
+    machine_role="${MACHINE_ROLE:-}"
+    git_name="${GIT_NAME:-}"
+    git_email="${GIT_EMAIL:-}"
+    proxy="${PROXY:-}"
+
+    if [ -z "$machine_role" ]; then
+        if _have_tty; then
+            read -rp "Machine role (remote/local/agent) [remote]: " machine_role </dev/tty
+        fi
+        machine_role="${machine_role:-remote}"
+    fi
+    case "$machine_role" in
+        remote|local|agent) ;;
+        *) error "Invalid machine role '$machine_role'. Use remote, local, or agent." ;;
+    esac
+
+    if [ -z "$git_name" ]; then
+        if _have_tty; then
+            read -rp "Git full name: " git_name </dev/tty
+        else
+            error "GIT_NAME is required (no TTY available). Set it as an environment variable."
+        fi
+    fi
+
+    if [ -z "$git_email" ]; then
+        if _have_tty; then
+            read -rp "Git email: " git_email </dev/tty
+        else
+            error "GIT_EMAIL is required (no TTY available). Set it as an environment variable."
+        fi
+    fi
+
+    if [ -z "$proxy" ]; then
+        if _have_tty; then
+            read -rp "HTTP proxy (leave blank if none): " proxy </dev/tty
+        fi
+    fi
+
+    validate_no_quotes() {
+        local val="$1" label="$2"
+        if [[ "$val" == *'"'* ]] || [[ "$val" == *$'\\'* ]]; then
+            error "$label must not contain double-quotes or backslashes"
+        fi
+    }
+    validate_no_quotes "$machine_role" "Machine role"
+    validate_no_quotes "$git_name" "Git name"
+    validate_no_quotes "$git_email" "Git email"
+    validate_no_quotes "$proxy" "Proxy"
+
+    cat > "$CHEZMOI_CFG" << EOF
+sourceDir = "$HOME/.local/share/chezmoi/home"
+
+[data]
+  machineRole = "$machine_role"
+  gitName     = "$git_name"
+  gitEmail    = "$git_email"
+  proxy       = "$proxy"
+
+# Route chezmoi's bitwarden integration through our wrapper, which
+# always passes --session and --nointeraction. bw 2026.x has been
+# observed to silently ignore BW_SESSION env in some flows; the
+# wrapper makes the session explicit. Wrapper exits cleanly if
+# BW_SESSION is unset, so a re-apply without unlocking the vault
+# first fails loudly instead of dropping into bw's tty prompt.
+[bitwarden]
+  command = "$HOME/.local/share/chezmoi/scripts/bw-with-session.sh"
+EOF
+    info "Config written to $CHEZMOI_CFG"
+else
+    info "Chezmoi config already exists at $CHEZMOI_CFG — skipping prompts."
+fi
+
+# Migrate older configs missing the [bitwarden] wrapper. Idempotent.
+if [ -f "$CHEZMOI_CFG" ] && ! grep -q '^\[bitwarden\]' "$CHEZMOI_CFG"; then
+    info "Adding [bitwarden] wrapper to existing chezmoi.toml..."
+    cat >> "$CHEZMOI_CFG" << EOF
+
+[bitwarden]
+  command = "$HOME/.local/share/chezmoi/scripts/bw-with-session.sh"
+EOF
+fi
+
+# ── Clone dotfiles repo ────────────────────────────────────────────────────
+REPO_PARENT="$HOME/.local/share/chezmoi"
+if [ ! -d "$REPO_PARENT/.git" ]; then
+    if ! command_exists git; then
+        info "Installing git (required to clone the dotfiles repo)..."
+        export DEBIAN_FRONTEND=noninteractive
+        _apt update -qq
+        _apt install -y git
+    fi
+    info "Cloning $DOTS_REPO into $REPO_PARENT ..."
+    mkdir -p "$(dirname "$REPO_PARENT")"
+    GIT_TERMINAL_PROMPT=0 git clone "$DOTS_REPO" "$REPO_PARENT" \
+        || error "git clone $DOTS_REPO failed. If the repo is private, clone it manually into $REPO_PARENT (e.g. via SSH) and re-run."
+else
+    info "Chezmoi source already present at $REPO_PARENT."
+fi
+
+# Pick up the real color lib now that the repo is on disk.
+if [ "${_DOTS_COLORS_SH:-0}" != "1" ] && [ -r "$REPO_PARENT/scripts/lib/colors.sh" ]; then
+    # shellcheck source=/dev/null
+    . "$REPO_PARENT/scripts/lib/colors.sh"
+fi
+
+# ── Apply dotfiles ─────────────────────────────────────────────────────────
+# dot_gitconfig.tmpl reads `credential_helper` from dots-git-secrets at render
+# time; if the item is missing, chezmoi apply would fail.
+info "Ensuring Bitwarden items exist..."
+"$REPO_PARENT/scripts/setup-bw-items.sh"
+
+info "Applying dotfiles..."
+chezmoi apply
+
+# ── Login shell ────────────────────────────────────────────────────────────
+_set_login_shell_zsh() {
+    local zsh_path current_shell
+    zsh_path="$(command -v zsh 2>/dev/null || true)"
+    if [ -z "$zsh_path" ]; then
+        c_warn "zsh not installed yet; skipping login-shell change."
+        return
+    fi
+    current_shell="$(getent passwd "$USER" 2>/dev/null | cut -d: -f7 || true)"
+    if [ "$current_shell" = "$zsh_path" ]; then
+        info "Login shell already zsh."
+        return
+    fi
+    if grep -qxF "$zsh_path" /etc/shells 2>/dev/null && chsh -s "$zsh_path" 2>/dev/null; then
+        info "Login shell set to $zsh_path via chsh."
+        return
+    fi
+    info "chsh unavailable; installing bash -> zsh trampoline in ~/.bash_profile."
+    local marker="# dots: exec zsh on interactive bash login"
+    if ! grep -qF "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+        cat >> "$HOME/.bash_profile" << EOF
+
+$marker
+if [ -t 1 ] && [ -z "\$ZSH_VERSION" ] && command -v zsh >/dev/null; then
+    exec zsh -l
+fi
+EOF
+    fi
+}
+_set_login_shell_zsh
+
+info "Done. Run 'cap' to apply future changes."

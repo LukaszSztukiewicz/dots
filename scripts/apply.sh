@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Keep this Bitwarden flow in sync with install.sh::_bw_ensure_session.
+# Keep this Bitwarden flow in sync with bootstrap.sh::_bw_ensure_session.
 # Reason for the song-and-dance: when BW_SESSION in env is stale, `bw status`
 # still returns "unlocked", but downstream `bw get item` calls fail and
 # silently fall back to a tty password prompt that mis-decodes input under
@@ -24,7 +24,7 @@ _bw_have_apikey() { [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ]; 
 _bw_status() { bw status 2>/dev/null | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || true; }
 
 _bw_session_valid() {
-    # See install.sh for why this is `list folders` (not `unlock --check`),
+    # See bootstrap.sh for why this is `list folders` (not `unlock --check`),
     # why we don't pass `--raw`, and why we use --session/--nointeraction.
     [ -n "${BW_SESSION:-}" ] && bw --nointeraction --session "$BW_SESSION" list folders >/dev/null 2>&1
 }
