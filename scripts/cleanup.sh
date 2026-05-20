@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# scripts/cleanup.sh — destructive cleanup of dots-managed state.
+#
+# Modes:
+#   --reset   Remove install-side state (chezmoi config + source dir, bw
+#             and chezmoi binaries, bw vault data). Re-running install.sh
+#             after this re-bootstraps cleanly. Applied dotfiles in $HOME
+#             are untouched.
+#
+#   --nuke    Reset, plus applied dotfiles, Oh My Zsh + plugins, fzf,
+#             language toolchains, p10k cache, shell history, and the
+#             bash->zsh trampoline in ~/.bash_profile. Confirms with a
+#             typed 'NUKE' prompt unless --force or DOTS_NUKE_FORCE=1.
+#
+#   --force   Skip the typed confirmation for --nuke.
+#
+# Every path is removed only after an `[ -e ]` check, so missing paths
+# are no-ops. The path list is hard-coded — no glob-rm under $HOME.
+
+# shellcheck source=lib/colors.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
+
+MODE=""
+FORCE="${DOTS_NUKE_FORCE:-0}"
+for arg in "$@"; do
+    case "$arg" in
+        --reset) MODE=reset ;;
+        --nuke)  MODE=nuke  ;;
+        --force) FORCE=1 ;;
+        -h|--help)
+            sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
+        *)
+            c_err "Unknown argument: $arg"
+            c_err "Usage: cleanup.sh [--reset | --nuke] [--force]"
+            exit 2
+            ;;
+    esac
+done
+
+if [ -z "$MODE" ]; then
+    c_err "One of --reset or --nuke is required."
+    exit 2
+fi
+
+RESET_PATHS=(
+    "$HOME/.config/chezmoi"
+    "$HOME/.local/share/chezmoi"
+    "$HOME/.config/Bitwarden CLI"
+    "$HOME/.local/bin/bw"
+    "$HOME/.local/bin/chezmoi"
+)
+
+NUKE_EXTRA_PATHS=(
+    # applied dotfiles
+    "$HOME/.zshrc"
+    "$HOME/.tmux.conf"
+    "$HOME/.p10k.zsh"
+    "$HOME/.gitconfig"
+    "$HOME/.config/nvim"
+    "$HOME/.config/tmux"
+    "$HOME/.config/btop"
+    # OMZ + plugins
+    "$HOME/.oh-my-zsh"
+    # fzf
+    "$HOME/.fzf"
+    "$HOME/.fzf.zsh"
+    "$HOME/.fzf.bash"
+    # language toolchains
+    "$HOME/.local/share/uv"
+    "$HOME/.cache/uv"
+    "$HOME/.local/bin/uv"
+    "$HOME/.local/bin/uvx"
+    "$HOME/.nvm"
+    "$HOME/miniconda3"
+    "$HOME/.juliaup"
+    "$HOME/.sdkman"
+    # tmux static binary (item 2)
+    "$HOME/.local/bin/tmux"
+    # shell state
+    "$HOME/.zsh_history"
+)
+
+remove_paths() {
+    for p in "$@"; do
+        if [ -e "$p" ] || [ -L "$p" ]; then
+            c_info "  rm -rf $p"
+            rm -rf -- "$p"
+        fi
+    done
+}
+
+# Remove glob-y caches/state separately. Kept narrow so we never expand
+# into something unrelated.
+remove_globs() {
+    shopt -s nullglob
+    local matches=(
+        "$HOME/.cache/p10k-instant-prompt-"*
+        "$HOME/.zcompdump"
+        "$HOME/.zcompdump-"*
+    )
+    shopt -u nullglob
+    [ "${#matches[@]}" -eq 0 ] && return
+    for p in "${matches[@]}"; do
+        [ -e "$p" ] || continue
+        c_info "  rm -rf $p"
+        rm -rf -- "$p"
+    done
+}
+
+# Surgically strip the bash trampoline marker block added by install.sh
+# (item 3). Leaves the rest of ~/.bash_profile alone.
+strip_bash_trampoline() {
+    local bp="$HOME/.bash_profile"
+    local marker="# dots: exec zsh on interactive bash login"
+    [ -f "$bp" ] || return 0
+    grep -qF "$marker" "$bp" || return 0
+    c_info "  stripping bash->zsh trampoline from $bp"
+    # Delete the marker line plus the following if-block ending at 'fi'.
+    awk -v m="$marker" '
+        BEGIN { skip = 0 }
+        $0 ~ m { skip = 1; next }
+        skip && $0 == "fi" { skip = 0; next }
+        !skip { print }
+    ' "$bp" > "$bp.tmp" && mv "$bp.tmp" "$bp"
+}
+
+case "$MODE" in
+    reset)
+        c_step "Reset: clearing install-side state..."
+        remove_paths "${RESET_PATHS[@]}"
+        c_ok "Reset complete."
+        ;;
+    nuke)
+        if [ "$FORCE" != "1" ]; then
+            c_warn "About to NUKE every dots-managed file:"
+            c_warn "  - install-side state (chezmoi, bw, vault data)"
+            c_warn "  - applied dotfiles (~/.zshrc, ~/.tmux.conf, ~/.p10k.zsh, ~/.gitconfig)"
+            c_warn "  - OMZ, fzf, p10k cache, ~/.zsh_history"
+            c_warn "  - language toolchains (uv, nvm, conda, juliaup, sdkman)"
+            c_warn "  - bash->zsh trampoline in ~/.bash_profile"
+            printf 'Type NUKE to confirm: ' >&2
+            IFS= read -r confirm
+            [ "$confirm" = "NUKE" ] || { c_err "Aborted."; exit 1; }
+        fi
+        c_step "Nuke: removing all dots-managed state..."
+        remove_paths "${RESET_PATHS[@]}"
+        remove_paths "${NUKE_EXTRA_PATHS[@]}"
+        remove_globs
+        strip_bash_trampoline
+        c_ok "Nuke complete. The machine no longer has any dots-managed state."
+        ;;
+esac

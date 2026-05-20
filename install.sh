@@ -23,24 +23,42 @@ info()  { c_info "$*"; }
 error() { c_err "$*"; exit 1; }
 command_exists() { command -v "$1" &>/dev/null; }
 
-# 0. Optional reset — wipes install-side state so the rest of the script runs
-#    as if on a fresh machine. Does NOT touch dotfiles already applied to $HOME
-#    (those are owned by chezmoi). Set DOTS_RESET=1 to enable.
-if [ "${DOTS_RESET:-0}" = "1" ]; then
-    info "DOTS_RESET=1: clearing install state..."
-    reset_paths=(
-        "$HOME/.config/chezmoi"
-        "$HOME/.local/share/chezmoi"
-        "$HOME/.config/Bitwarden CLI"
-        "$HOME/.local/bin/bw"
-        "$HOME/.local/bin/chezmoi"
-    )
-    for p in "${reset_paths[@]}"; do
-        if [ -e "$p" ]; then
-            info "  rm -rf $p"
-            rm -rf -- "$p"
-        fi
-    done
+# 0. Optional cleanup — see scripts/cleanup.sh for the canonical logic.
+#    DOTS_RESET=1 wipes install-side state (chezmoi config, source dir,
+#                 bw + chezmoi binaries, bw vault data). Applied dotfiles
+#                 in $HOME are untouched.
+#    DOTS_NUKE=1  also removes applied dotfiles, OMZ, fzf, p10k cache,
+#                 shell history, and language toolchains. Requires the
+#                 repo to be on disk (it lives *in* the repo).
+_CLEANUP_SCRIPT="$HOME/.local/share/chezmoi/scripts/cleanup.sh"
+if [ "${DOTS_NUKE:-0}" = "1" ]; then
+    if [ ! -x "$_CLEANUP_SCRIPT" ]; then
+        error "DOTS_NUKE=1 requires $_CLEANUP_SCRIPT. Clone the repo into \$HOME/.local/share/chezmoi first, then re-run."
+    fi
+    "$_CLEANUP_SCRIPT" --nuke ${DOTS_NUKE_FORCE:+--force}
+elif [ "${DOTS_RESET:-0}" = "1" ]; then
+    if [ -x "$_CLEANUP_SCRIPT" ]; then
+        "$_CLEANUP_SCRIPT" --reset
+    else
+        # Bootstrap path: the repo isn't on disk yet, so the canonical
+        # cleanup script doesn't exist. Inline the minimum reset list so
+        # `curl|bash DOTS_RESET=1` still works on a fresh machine — must
+        # stay in sync with RESET_PATHS in scripts/cleanup.sh.
+        info "DOTS_RESET=1: clearing install state (inline, repo not yet cloned)..."
+        reset_paths=(
+            "$HOME/.config/chezmoi"
+            "$HOME/.local/share/chezmoi"
+            "$HOME/.config/Bitwarden CLI"
+            "$HOME/.local/bin/bw"
+            "$HOME/.local/bin/chezmoi"
+        )
+        for p in "${reset_paths[@]}"; do
+            if [ -e "$p" ]; then
+                info "  rm -rf $p"
+                rm -rf -- "$p"
+            fi
+        done
+    fi
 fi
 
 # 1. Detect OS

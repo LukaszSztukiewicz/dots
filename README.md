@@ -51,6 +51,13 @@ re-testing the bootstrap on a machine that already has a partial install.
 Dotfiles already applied to `$HOME` are **not** touched — those are managed by
 chezmoi.
 
+**Decommission / security wipe** — set `DOTS_NUKE=1` to additionally remove
+applied dotfiles, Oh My Zsh, fzf, language toolchains (uv/nvm/conda/juliaup/sdkman),
+the p10k cache, shell history, and the bash→zsh trampoline (see below). Prompts
+for a typed `NUKE` confirmation unless `DOTS_NUKE_FORCE=1` is also set. Both
+modes shell out to `scripts/cleanup.sh`, which can also be invoked directly:
+`~/dots/scripts/cleanup.sh --nuke [--force]`.
+
 The env var has to apply to `bash` (not to `curl`), so put it on the right
 side of the pipe:
 
