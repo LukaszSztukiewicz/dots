@@ -180,27 +180,37 @@ _bw_ensure_session() {
 
     case "$status" in
         unlocked|locked)
-            [ "$status" = "unlocked" ] && bw lock >/dev/null 2>&1 || true
+            [ "$status" = "unlocked" ] && bw lock>/dev/null 2>&1 || true
             info "Unlocking Bitwarden vault..."
+            _bw_unlock_interactive
             ;;
         unauthenticated)
             if _bw_have_apikey; then
                 info "Logging in to Bitwarden via API key..."
                 bw login --apikey --quiet
+                info "Login complete. Unlocking vault..."
+                # API key login leaves the vault locked, so we must unlock it now
+                _bw_unlock_interactive
             elif _have_tty; then
                 info "Not logged in to Bitwarden. Logging in (interactive)..."
-                bw login </dev/tty
+                # Interactive login authenticates AND unlocks. We capture the raw token
+                # directly to skip the redundant unlock step.
+                local login_out
+                if login_out=$(bw login --raw </dev/tty); then
+                    export BW_SESSION="$login_out"
+                    info "Login and unlock complete."
+                else
+                    error "Bitwarden login failed."
+                fi
+                [ -n "$BW_SESSION" ] || error "bw login returned no session token."
             else
                 error "Bitwarden login required, but stdin is not a TTY and BW_CLIENTID/BW_CLIENTSECRET are unset. Re-run from a terminal, or set the API-key env vars (see README -> Headless mode)."
             fi
-            info "Login complete. Unlocking vault..."
             ;;
         *)
             error "Could not determine Bitwarden status (got: '$status'). Is bw installed?"
             ;;
     esac
-
-    _bw_unlock_interactive
 }
 
 _bw_ensure_session
