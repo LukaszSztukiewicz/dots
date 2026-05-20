@@ -115,6 +115,17 @@ Install only when needed; each script drops the tool into `~/.local/bin` (or a
 tool-specific dir) without touching `.zshrc` — init blocks in `.zshrc` are
 already there, gated on existence checks.
 
+Both forms work — repo-local if you cloned, or one-shot via `curl | bash`
+if you didn't:
+
+```bash
+# repo-local
+~/dots/scripts/install-tmux.sh
+
+# no clone needed
+curl -fsSL https://raw.githubusercontent.com/LukaszSztukiewicz/dots/main/scripts/install-tmux.sh | bash
+```
+
 | Tool | Install command | Purpose |
 |---|---|---|
 | **uv** | `~/dots/scripts/install-uv.sh` | Fast Python package / project manager (Astral) |

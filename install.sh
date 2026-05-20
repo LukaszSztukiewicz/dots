@@ -3,20 +3,27 @@ set -euo pipefail
 
 DOTS_REPO="${DOTS_REPO:-https://github.com/LukaszSztukiewicz/dots}"
 
-# Source the shared color lib if the repo is already on disk. install.sh is
-# also invoked via `curl|bash` on a fresh machine where the repo isn't here
-# yet — in that case fall back to plain printf-based helpers with the same
-# signatures, and we re-source the real lib once the repo is cloned (step 6).
+# Source the shared color lib if the repo is already on disk; otherwise
+# fall back to TTY-aware inline shims so even the first few `[dots]` lines
+# are colored on a fresh machine. The real lib gets re-sourced after the
+# repo is cloned (step 6) — same color codes, so the transition is seamless.
 _COLORS_LIB="$HOME/.local/share/chezmoi/scripts/lib/colors.sh"
 # shellcheck source=/dev/null
 if [ -r "$_COLORS_LIB" ]; then
     . "$_COLORS_LIB"
 else
-    c_info() { printf '[dots] %s\n' "$*"; }
-    c_ok()   { printf '[ ok ] %s\n' "$*"; }
-    c_warn() { printf '[warn] %s\n' "$*" >&2; }
-    c_err()  { printf '[ERR ] %s\n' "$*" >&2; }
-    c_step() { printf '==> %s\n' "$*"; }
+    if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ -z "${DOTS_NO_COLOR:-}" ]; then
+        _r=$'\033[0m'; _b=$'\033[1m'
+        _rd=$'\033[31m'; _g=$'\033[32m'; _y=$'\033[33m'
+        _bl=$'\033[34m'; _c=$'\033[36m'
+    else
+        _r=; _b=; _rd=; _g=; _y=; _bl=; _c=
+    fi
+    c_step() { printf '%s==>%s %s%s%s\n' "$_c"  "$_r" "$_b" "$*" "$_r"; }
+    c_info() { printf '%s[dots]%s %s\n'  "$_bl" "$_r" "$*"; }
+    c_ok()   { printf '%s[ ok ]%s %s\n'  "$_g"  "$_r" "$*"; }
+    c_warn() { printf '%s[warn]%s %s\n'  "$_y"  "$_r" "$*" >&2; }
+    c_err()  { printf '%s[ERR ]%s %s\n'  "$_rd" "$_r" "$*" >&2; }
 fi
 
 info()  { c_info "$*"; }
