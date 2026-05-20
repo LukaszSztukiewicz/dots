@@ -51,6 +51,19 @@ _apt() {
 }
 
 # 1. Validate prerequisites — bootstrap.sh must have run.
+#
+# bootstrap.sh installs bw + chezmoi into ~/.local/bin and prepends that dir
+# to PATH inside its own subshell. When bootstrap.sh exits, that PATH change
+# is gone. On a fresh machine the user's interactive shell typically does
+# NOT have ~/.local/bin in PATH (our dot_zshrc.tmpl hasn't been applied yet,
+# and bash's stock .profile only adds it if the dir existed at login time),
+# so install.sh inherits a PATH without it. Prepend ourselves so the bw and
+# chezmoi checks below find them.
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
 command_exists bw      || error "bw not found in PATH. Run bootstrap.sh first: curl -fsSL ${DOTS_RAW}/bootstrap.sh | bash"
 command_exists chezmoi || error "chezmoi not found in PATH. Run bootstrap.sh first."
 [ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run bootstrap.sh first; it prints the export line."
