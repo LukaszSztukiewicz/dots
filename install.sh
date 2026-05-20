@@ -354,4 +354,41 @@ info "Ensuring Bitwarden items exist..."
 info "Applying dotfiles..."
 chezmoi apply
 
+# 7. Make zsh the login shell so any session (tmux, ssh, console) starts in
+#    zsh — not just one terminal. Best-effort:
+#      - If chsh works and zsh is in /etc/shells, use that.
+#      - Otherwise (locked-down clusters, zsh not registered) drop a
+#        `exec zsh -l` trampoline into ~/.bash_profile so an interactive
+#        bash login still hands off to zsh.
+#    Marker comment lets scripts/cleanup.sh --nuke strip the block back out.
+_set_login_shell_zsh() {
+    local zsh_path current_shell
+    zsh_path="$(command -v zsh 2>/dev/null || true)"
+    if [ -z "$zsh_path" ]; then
+        c_warn "zsh not installed yet; skipping login-shell change."
+        return
+    fi
+    current_shell="$(getent passwd "$USER" 2>/dev/null | cut -d: -f7 || true)"
+    if [ "$current_shell" = "$zsh_path" ]; then
+        info "Login shell already zsh."
+        return
+    fi
+    if grep -qxF "$zsh_path" /etc/shells 2>/dev/null && chsh -s "$zsh_path" 2>/dev/null; then
+        info "Login shell set to $zsh_path via chsh."
+        return
+    fi
+    info "chsh unavailable; installing bash -> zsh trampoline in ~/.bash_profile."
+    local marker="# dots: exec zsh on interactive bash login"
+    if ! grep -qF "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+        cat >> "$HOME/.bash_profile" << EOF
+
+$marker
+if [ -t 1 ] && [ -z "\$ZSH_VERSION" ] && command -v zsh >/dev/null; then
+    exec zsh -l
+fi
+EOF
+    fi
+}
+_set_login_shell_zsh
+
 info "Done. Run 'cap' to apply future changes."
