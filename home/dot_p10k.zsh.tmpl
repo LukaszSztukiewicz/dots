@@ -1024,4 +1024,7 @@ typeset -g POWERLEVEL9K_CONFIG_FILE=${${(%):-%x}:a}
 {{- if eq .machineRole "local" }}
 typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_FOREGROUND=39
 typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION='%n@%m'
+{{- else if eq .machineRole "remote" }}
+# Make the directory path (including tilde) amber colored on remote machines
+typeset -g POWERLEVEL9K_DIR_FOREGROUND=172
 {{- end }}
