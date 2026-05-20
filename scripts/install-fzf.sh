@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=lib/colors.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
+
 # Install fzf from the upstream repo into ~/.fzf and run its installer to set up
 # ~/.fzf.zsh (sourced by dot_zshrc.tmpl) with keybindings + completion.
 # Re-runnable: pulls the latest if already cloned.
@@ -12,15 +15,15 @@ set -euo pipefail
 FZF_DIR="$HOME/.fzf"
 
 if ! command -v git >/dev/null 2>&1; then
-    echo "[dots] git is required to install fzf." >&2
+    c_err "git is required to install fzf."
     exit 1
 fi
 
 if [ -d "$FZF_DIR/.git" ]; then
-    echo "[dots] Updating fzf in $FZF_DIR..."
-    git -C "$FZF_DIR" pull --quiet --ff-only || echo "[dots] fzf pull failed; keeping existing clone."
+    c_info "Updating fzf in $FZF_DIR..."
+    git -C "$FZF_DIR" pull --quiet --ff-only || c_warn "fzf pull failed; keeping existing clone."
 else
-    echo "[dots] Cloning fzf to $FZF_DIR..."
+    c_info "Cloning fzf to $FZF_DIR..."
     git clone --depth 1 https://github.com/junegunn/fzf.git "$FZF_DIR"
 fi
 
@@ -30,6 +33,5 @@ fi
 # --no-bash --no-fish: zsh only for this setup
 "$FZF_DIR/install" --key-bindings --completion --no-update-rc --no-bash --no-fish >/dev/null
 
-# Make the upstream fzf binary visible without a new shell.
-echo "[dots] fzf installed: $("$FZF_DIR/bin/fzf" --version)"
-echo "[dots] Open a new shell or run \`source ~/.fzf.zsh\` to pick up keybindings."
+c_ok "fzf installed: $("$FZF_DIR/bin/fzf" --version)"
+c_info "Open a new shell or run \`source ~/.fzf.zsh\` to pick up keybindings."

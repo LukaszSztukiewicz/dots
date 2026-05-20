@@ -7,9 +7,12 @@ set -euo pipefail
 #
 # install-fzf.sh hash: {{ include "../scripts/install-fzf.sh" | sha256sum }}
 
+# shellcheck source=/dev/null
+. "{{ .chezmoi.sourceDir }}/../scripts/lib/colors.sh"
+
 machine_role="{{ .machineRole }}"
 if [ "$machine_role" = "server" ]; then
-    echo "[dots] Skipping fzf install on server role."
+    c_info "Skipping fzf install on server role."
     exit 0
 fi
 

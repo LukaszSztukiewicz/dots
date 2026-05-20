@@ -7,8 +7,11 @@ set -euo pipefail
 # silently fall back to a tty password prompt that mis-decodes input under
 # /dev/tty redirection. `bw unlock --check` is the only reliable test.
 
-info()  { echo "[dots] $*"; }
-error() { echo "[dots] ERROR: $*" >&2; exit 1; }
+# shellcheck source=lib/colors.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
+
+info()  { c_info "$*"; }
+error() { c_err "$*"; exit 1; }
 
 # Trim trailing/leading whitespace on env-supplied credentials.
 _strip_ws() { printf '%s' "$1" | awk '{$1=$1; print}'; }

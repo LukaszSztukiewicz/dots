@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=lib/colors.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
+
 # Install Neovim from the upstream tarball into /opt and symlink /usr/local/bin/nvim.
 # Re-runnable; replaces any existing copy. Needs sudo for the /opt + /usr/local bits.
 #
@@ -17,11 +20,11 @@ if command -v ldd >/dev/null 2>&1; then
     glibc=$(ldd --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
     required=2.32
     if [ -n "$glibc" ] && awk -v g="$glibc" -v r="$required" 'BEGIN{exit !(g+0 < r+0)}'; then
-        echo "[dots] nvim: this system has glibc $glibc; nvim binaries need >= $required." >&2
-        echo "[dots] Options:" >&2
-        echo "[dots]   - Use a newer base image (Ubuntu 22.04+, Debian 12+)." >&2
-        echo "[dots]   - Build neovim from source." >&2
-        echo "[dots]   - Skip nvim install on this host." >&2
+        c_err "nvim: this system has glibc $glibc; nvim binaries need >= $required."
+        c_err "Options:"
+        c_err "  - Use a newer base image (Ubuntu 22.04+, Debian 12+)."
+        c_err "  - Build neovim from source."
+        c_err "  - Skip nvim install on this host."
         exit 1
     fi
 fi
@@ -31,7 +34,7 @@ case "$arch" in
     x86_64)  asset="nvim-linux-x86_64.tar.gz"; prefix="/opt/nvim-linux-x86_64" ;;
     aarch64) asset="nvim-linux-arm64.tar.gz";  prefix="/opt/nvim-linux-arm64"  ;;
     *)
-        echo "[dots] nvim: unsupported arch '$arch'" >&2
+        c_err "nvim: unsupported arch '$arch'"
         exit 1
         ;;
 esac
@@ -40,7 +43,7 @@ esac
 SUDO=""
 if [ "$(id -u)" -ne 0 ]; then
     if ! command -v sudo >/dev/null 2>&1; then
-        echo "[dots] ERROR: install-nvim.sh needs root for /opt and /usr/local/bin, but sudo is unavailable." >&2
+        c_err "install-nvim.sh needs root for /opt and /usr/local/bin, but sudo is unavailable."
         exit 1
     fi
     SUDO=sudo
@@ -49,14 +52,14 @@ fi
 # Warn if an existing nvim shadows what we're about to install (e.g. snap, apt).
 existing=$(command -v nvim 2>/dev/null || true)
 if [ -n "$existing" ] && [ "$existing" != "/usr/local/bin/nvim" ]; then
-    echo "[dots] note: an existing nvim is at $existing — /usr/local/bin/nvim will take precedence after install."
+    c_warn "an existing nvim is at $existing — /usr/local/bin/nvim will take precedence after install."
 fi
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 url="https://github.com/neovim/neovim/releases/download/${TAG}/${asset}"
-echo "[dots] Downloading nvim ${TAG} ($asset)"
+c_info "Downloading nvim ${TAG} ($asset)"
 curl -fsSL "$url" -o "$TMP/$asset"
 
 $SUDO rm -rf "$prefix"
@@ -65,5 +68,5 @@ $SUDO tar -xzf "$TMP/$asset" -C "$prefix" --strip-components=1
 
 $SUDO ln -sf "$prefix/bin/nvim" /usr/local/bin/nvim
 
-echo "[dots] nvim installed: $(/usr/local/bin/nvim --version | head -1)"
-echo "[dots] On first launch, LazyVim will bootstrap lazy.nvim and install plugins."
+c_ok "nvim installed: $(/usr/local/bin/nvim --version | head -1)"
+c_info "On first launch, LazyVim will bootstrap lazy.nvim and install plugins."

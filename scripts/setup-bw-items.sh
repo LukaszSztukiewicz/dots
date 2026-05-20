@@ -12,8 +12,11 @@ set -euo pipefail
 # No jq required — we construct the item JSON inline so this is safe to call
 # from install.sh before chezmoi has installed packages.
 
-info()  { echo "[dots] $*"; }
-error() { echo "[dots] ERROR: $*" >&2; exit 1; }
+# shellcheck source=lib/colors.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
+
+info()  { c_info "$*"; }
+error() { c_err "$*"; exit 1; }
 
 command -v bw >/dev/null 2>&1 || error "bw (Bitwarden CLI) not found in PATH."
 [ -n "${BW_SESSION:-}" ] || error "BW_SESSION not set. Run install.sh or \`bw unlock\` first."

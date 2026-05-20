@@ -3,8 +3,24 @@ set -euo pipefail
 
 DOTS_REPO="${DOTS_REPO:-https://github.com/LukaszSztukiewicz/dots}"
 
-info()  { echo "[dots] $*"; }
-error() { echo "[dots] ERROR: $*" >&2; exit 1; }
+# Source the shared color lib if the repo is already on disk. install.sh is
+# also invoked via `curl|bash` on a fresh machine where the repo isn't here
+# yet — in that case fall back to plain printf-based helpers with the same
+# signatures, and we re-source the real lib once the repo is cloned (step 6).
+_COLORS_LIB="$HOME/.local/share/chezmoi/scripts/lib/colors.sh"
+# shellcheck source=/dev/null
+if [ -r "$_COLORS_LIB" ]; then
+    . "$_COLORS_LIB"
+else
+    c_info() { printf '[dots] %s\n' "$*"; }
+    c_ok()   { printf '[ ok ] %s\n' "$*"; }
+    c_warn() { printf '[warn] %s\n' "$*" >&2; }
+    c_err()  { printf '[ERR ] %s\n' "$*" >&2; }
+    c_step() { printf '==> %s\n' "$*"; }
+fi
+
+info()  { c_info "$*"; }
+error() { c_err "$*"; exit 1; }
 command_exists() { command -v "$1" &>/dev/null; }
 
 # 0. Optional reset — wipes install-side state so the rest of the script runs
@@ -301,6 +317,13 @@ if [ ! -d "$REPO_PARENT/.git" ]; then
         || error "git clone $DOTS_REPO failed. If the repo is private, clone it manually into $REPO_PARENT (e.g. via SSH) and re-run."
 else
     info "Chezmoi source already present at $REPO_PARENT."
+fi
+
+# Repo is on disk now — pick up the real color lib if we were running with
+# the fallback shims from the curl|bash fresh-machine path.
+if [ "${_DOTS_COLORS_SH:-0}" != "1" ] && [ -r "$REPO_PARENT/scripts/lib/colors.sh" ]; then
+    # shellcheck source=/dev/null
+    . "$REPO_PARENT/scripts/lib/colors.sh"
 fi
 
 # 6a. Bootstrap the Bitwarden items the dotfiles depend on. dot_gitconfig.tmpl

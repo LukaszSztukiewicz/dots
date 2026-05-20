@@ -11,5 +11,8 @@
 # (set by install.sh). Re-applying chezmoi without BW_SESSION set will
 # now fail loudly here instead of mid-prompt.
 set -euo pipefail
+# No color lib here on purpose — this wrapper is called by chezmoi during
+# template rendering and any stdout we emit beyond bw's own output would
+# corrupt template values. The bare-error form is intentional.
 : "${BW_SESSION:?BW_SESSION not set; cannot call bw}"
 exec bw --nointeraction --session "$BW_SESSION" "$@"

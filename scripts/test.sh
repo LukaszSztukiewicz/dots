@@ -3,7 +3,10 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-info()  { echo "[smoke-test] $*"; }
+# shellcheck source=lib/colors.sh
+. "$REPO_ROOT/scripts/lib/colors.sh"
+
+info()  { c_info "$*"; }
 
 info "Building smoke-test Docker image..."
 

@@ -7,9 +7,12 @@ set -euo pipefail
 #
 # install-dua.sh hash: {{ include "../scripts/install-dua.sh" | sha256sum }}
 
+# shellcheck source=/dev/null
+. "{{ .chezmoi.sourceDir }}/../scripts/lib/colors.sh"
+
 machine_role="{{ .machineRole }}"
 if [ "$machine_role" = "server" ]; then
-    echo "[dots] Skipping dua-cli install on server role."
+    c_info "Skipping dua-cli install on server role."
     exit 0
 fi
 

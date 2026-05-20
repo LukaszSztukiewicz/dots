@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=/dev/null
+. "{{ .chezmoi.sourceDir }}/../scripts/lib/colors.sh"
+
 # Idempotently clone Oh My Zsh, plugins, and the powerlevel10k theme used
 # by dot_zshrc.tmpl. Re-runs are a no-op once everything is present.
 # Updates are NOT pulled automatically — to refresh, run `cd <dir> && git pull`
@@ -10,7 +13,7 @@ ZSH_DIR="$HOME/.oh-my-zsh"
 ZSH_CUSTOM="$ZSH_DIR/custom"
 
 if ! command -v git >/dev/null; then
-    echo "[dots] git not found; install it first (it should be in packages.yaml)." >&2
+    c_err "git not found; install it first (it should be in packages.yaml)."
     exit 1
 fi
 
@@ -19,7 +22,7 @@ clone_if_missing() {
     if [ -d "$dest/.git" ]; then
         return 0
     fi
-    echo "[dots] cloning $url -> $dest"
+    c_info "cloning $url -> $dest"
     git clone --depth 1 "$url" "$dest"
 }
 
@@ -39,4 +42,4 @@ clone_if_missing "$ZSH_CUSTOM/plugins/you-should-use"          https://github.co
 # Theme
 clone_if_missing "$ZSH_CUSTOM/themes/powerlevel10k" https://github.com/romkatv/powerlevel10k
 
-echo "[dots] OMZ + plugins + powerlevel10k ready."
+c_ok "OMZ + plugins + powerlevel10k ready."

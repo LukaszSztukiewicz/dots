@@ -11,9 +11,12 @@ set -euo pipefail
 #
 # install-btop.sh hash: {{ include "../scripts/install-btop.sh" | sha256sum }}
 
+# shellcheck source=/dev/null
+. "{{ .chezmoi.sourceDir }}/../scripts/lib/colors.sh"
+
 machine_role="{{ .machineRole }}"
 if [ "$machine_role" = "server" ]; then
-    echo "[dots] Skipping btop install on server role."
+    c_info "Skipping btop install on server role."
     exit 0
 fi
 
