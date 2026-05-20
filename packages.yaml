@@ -1,12 +1,12 @@
 packages:
   - name: zsh
     ubuntu: zsh
+  # tmux: install via scripts/install-tmux.sh on chezmoi apply (upstream installer),
+  # not apt; minimal images often ship tmux too old for OSC52 passthrough.
   - name: git
     ubuntu: git
   - name: curl
     ubuntu: curl
-  - name: tmux
-    ubuntu: tmux
   # ncurses-term: provides the tmux-256color terminfo entry. Without it,
   # p10k inside tmux falls back to limited colors on minimal images.
   - name: ncurses-term
@@ -23,5 +23,5 @@ packages:
     ubuntu: fd-find
   - name: jq
     ubuntu: jq
-# btop: NOT auto-installed on apply anymore — run scripts/install-btop.sh
-# manually if you want it.
+  # btop: NOT auto-installed on apply anymore — run scripts/install-btop.sh
+  # manually if you want it.

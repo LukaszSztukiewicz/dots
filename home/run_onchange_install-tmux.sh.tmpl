@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Auto-install tmux on chezmoi apply. Uses scripts/install-tmux.sh to install
+# a static tmux binary into ~/.local/bin, because apt tmux is often too old on
+# minimal images.
+# install-tmux.sh hash: {{ include "../scripts/install-tmux.sh" | sha256sum }}
+
+# shellcheck source=/dev/null
+. "{{ .chezmoi.sourceDir }}/../scripts/lib/colors.sh"
+
+exec "{{ .chezmoi.sourceDir }}/../scripts/install-tmux.sh"
