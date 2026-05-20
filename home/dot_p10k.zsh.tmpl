@@ -1027,4 +1027,6 @@ typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION='%n@%m'
 {{- else if eq .machineRole "remote" }}
 # Make the directory path (including tilde) amber colored on remote machines
 typeset -g POWERLEVEL9K_DIR_FOREGROUND=172
+typeset -g POWERLEVEL9K_DIR_SHORTENED_FOREGROUND=172
+typeset -g POWERLEVEL9K_DIR_ANCHOR_FOREGROUND=172
 {{- end }}
