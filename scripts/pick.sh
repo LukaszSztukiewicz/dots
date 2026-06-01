@@ -72,6 +72,7 @@ TOOLS=(
   "juliaup|juliaup|Julia version manager"
   "dua|dua|Disk Usage Analyzer"
   "btop|btop|Resource monitor"
+  "rclone|rclone|Command-line program to manage files on cloud storage"
 )
 
 # ── Selection UI ──────────────────────────────────────────────────────────────
